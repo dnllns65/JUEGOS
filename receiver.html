@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AdivinaQuién AI - TV Screen</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- FontAwesome para iconos -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="tv-screen">
+
+  <div class="tv-container">
+    
+    <!-- TV HEADER -->
+    <header class="tv-header">
+      <div class="logo tv-logo">
+        <i class="fa-solid fa-brain"></i> AdivinaQuién <span>AI</span>
+      </div>
+      <div id="tv-status" class="tv-status-badge">
+        <i class="fa-solid fa-circle-dot pulse-success-active" style="color: var(--accent); margin-right: 8px;"></i> Pantalla Activa
+      </div>
+    </header>
+
+    <!-- TV MAIN PANEL (DOCKING CONTENT) -->
+    <main class="tv-main">
+      
+      <!-- LADO IZQUIERDO: ESTADO / ANIMACIONES / SELECCIÓN -->
+      <div class="tv-panel-left">
+        
+        <!-- Vista 1: Bienvenida -->
+        <div id="tv-view-welcome" class="tv-welcome">
+          <h1>¡Prepara tus Preguntas!</h1>
+          <p>El celular anfitrión está configurando la partida...</p>
+        </div>
+
+        <!-- Vista 2: Animación de Búsqueda -->
+        <div id="tv-view-searching" class="search-container" style="display: none;">
+          <div class="search-scanner tv-big-scanner">
+            <div class="scanner-ring"></div>
+            <div class="scanner-pulse"></div>
+            <i class="fa-solid fa-globe scanner-icon"></i>
+          </div>
+          <h2 style="font-size: 2.2rem; margin-bottom: 20px;">Buscando Personaje...</h2>
+          <div id="tv-search-logs" class="search-logs" style="max-width: 450px; font-size: 1rem; height: 100px;">
+            <!-- Logs sincronizados de búsqueda -->
+          </div>
+        </div>
+
+        <!-- Vista 3: Juego en Curso (Stats) -->
+        <div id="tv-view-gameplay" class="tv-game-status" style="display: none;">
+          <h2 style="font-size: 2rem; margin-bottom: 10px;">Preguntas Realizadas</h2>
+          <div id="tv-questions-val" class="tv-question-counter">0 / 20</div>
+          
+          <div class="glass-card" style="margin-top: 30px; width: 350px; padding: 15px; text-align: left;">
+            <span class="filter-label">Filtros Seleccionados</span>
+            <div id="tv-active-filters" style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px; font-size: 1rem;">
+              <!-- Filtros en texto -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Vista 4: Resultados / Revelación -->
+        <div id="tv-view-results" class="result-box" style="display: none;">
+          <div id="tv-result-emoji" class="result-badge" style="font-size: 6rem;">🏆</div>
+          <h1 id="tv-result-title" style="font-family: var(--font-title); font-size: 3.5rem; font-weight: 800;">¡Victoria!</h1>
+          
+          <div class="glass-card" style="width: 500px; text-align: center; padding: 30px;">
+            <span class="filter-label">El personaje misterioso era</span>
+            <div id="tv-result-char-name" class="result-name" style="font-size: 2.5rem; margin: 15px 0;">Lionel Messi</div>
+            <p id="tv-result-char-desc" style="font-size: 1.2rem; line-height: 1.6; color: var(--text-muted);">
+              Futbolista argentino de renombre mundial.
+            </p>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- LADO DERECHO: CHAT / HISTORIAL DE PREGUNTAS -->
+      <div class="tv-panel-right">
+        <span class="filter-label" style="font-size: 1.1rem; margin-bottom: 15px; display: block;">Historial de Respuestas</span>
+        
+        <div class="glass-card" style="flex-grow: 1; padding: 25px; display: flex; flex-direction: column; height: 100%;">
+          <div id="tv-chat-container" class="tv-chat-container">
+            <!-- Preguntas y Respuestas sincronizadas -->
+            <div class="chat-bubble player tv-chat-bubble" style="font-style: italic; color: var(--text-muted); align-self: center; text-align: center; max-width: 100%;">
+              El historial de preguntas se mostrará aquí en tiempo real.
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+
+    <div id="tv-spotify-container" style="width: 100%; max-height: 80px; margin-bottom: 15px; border-radius: 12px; overflow: hidden; display: none;">
+      <!-- Iframe se inserta dinámicamente aquí -->
+    </div>
+
+    <!-- TV FOOTER -->
+    <footer class="tv-footer">
+      Controla este juego desde tu celular conectado en la misma red.
+    </footer>
+
+  </div>
+
+  <!-- Lógica de la TV -->
+  <script src="receiver.js"></script>
+</body>
+</html>

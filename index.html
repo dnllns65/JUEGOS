@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AdivinaQuién AI - Anfitrión</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- FontAwesome para iconos -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+  <div class="app-container">
+    
+    <!-- HEADER -->
+    <header>
+      <div class="logo">
+        <i class="fa-solid fa-brain"></i> AdivinaQuién <span>AI</span>
+      </div>
+      <button id="btn-cast" class="btn-cast" title="Transmitir a la pantalla de TV">
+        <i class="fa-solid fa-tv"></i> Transmitir
+      </button>
+    </header>
+
+    <!-- PANTALLA 1: INICIO (HOME) -->
+    <section id="screen-home" class="screen active">
+      <div class="home-graphic">
+        <div class="graphic-icon">
+          <i class="fa-solid fa-mask"></i>
+        </div>
+        <h2>El Celular es el Anfitrión</h2>
+        <p class="subtitle">La IA seleccionará un personaje misterioso basándose en tus filtros. Los demás jugadores deben adivinarlo haciendo preguntas de SÍ o NO.</p>
+      </div>
+      
+      <div class="home-buttons">
+        <button id="btn-start-setup" class="btn btn-accent">
+          <i class="fa-solid fa-play"></i> Configurar Partida
+        </button>
+      </div>
+    </section>
+
+    <!-- PANTALLA 2: CONFIGURACIÓN (SETUP) -->
+    <section id="screen-setup" class="screen">
+      <h2>Filtros del Personaje</h2>
+      <p class="subtitle">Define los criterios que utilizará la IA para realizar la búsqueda en internet.</p>
+      
+      <div class="glass-card">
+        <!-- Filtro: Origen -->
+        <div class="filter-group">
+          <span class="filter-label">Nacionalidad / Zona</span>
+          <div class="filter-options" data-filter="region">
+            <button class="filter-btn selected" data-value="random">Aleatorio</button>
+            <button class="filter-btn" data-value="latam">Latinoamérica</button>
+            <button class="filter-btn" data-value="usa">Norteamérica</button>
+            <button class="filter-btn" data-value="europa">Europa</button>
+            <button class="filter-btn" data-value="asia_africa">Asia / África</button>
+          </div>
+        </div>
+
+        <!-- Filtro: Profesión -->
+        <div class="filter-group">
+          <span class="filter-label">Profesión / Área</span>
+          <div class="filter-options" data-filter="area">
+            <button class="filter-btn selected" data-value="random">Aleatorio</button>
+            <button class="filter-btn" data-value="sports">Deportes</button>
+            <button class="filter-btn" data-value="music">Música / Cine</button>
+            <button class="filter-btn" data-value="science">Ciencia / Tech</button>
+            <button class="filter-btn" data-value="history">Historia / Pol.</button>
+            <button class="filter-btn" data-value="fiction">Ficción</button>
+          </div>
+        </div>
+
+        <!-- Filtro: Realidad -->
+        <div class="filter-group">
+          <span class="filter-label">Naturaleza</span>
+          <div class="filter-options three-cols" data-filter="nature">
+            <button class="filter-btn selected" data-value="random">Aleatorio</button>
+            <button class="filter-btn" data-value="real">Real</button>
+            <button class="filter-btn" data-value="fictional">Ficticio</button>
+          </div>
+        </div>
+
+        <!-- Filtro: Época -->
+        <div class="filter-group">
+          <span class="filter-label">Época</span>
+          <div class="filter-options three-cols" data-filter="era">
+            <button class="filter-btn selected" data-value="random">Aleatorio</button>
+            <button class="filter-btn" data-value="current">Actual</button>
+            <button class="filter-btn" data-value="historical">Histórico</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="filter-group" style="margin-bottom: 20px;">
+        <span class="filter-label">Modo de Anfitrión</span>
+        <div class="filter-options" id="host-mode-options">
+          <button class="filter-btn selected" id="mode-ai" data-mode="ai">
+            <i class="fa-solid fa-robot"></i> Anfitrión IA (Auto)
+          </button>
+          <button class="filter-btn" id="mode-manual" data-mode="manual">
+            <i class="fa-solid fa-user-tie"></i> Anfitrión Humano
+          </button>
+      </div>
+
+      <div class="filter-group" style="margin-bottom: 20px;">
+        <span class="filter-label">Música de Fondo (Smart TV)</span>
+        <select id="spotify-playlist-select" class="input-field" style="width: 100%; margin-bottom: 10px; background: var(--bg-card); border-color: var(--bg-card-border); color: var(--text-main);">
+          <option value="">Sin música</option>
+          <option value="37i9dQZF1DX10zKjJ27ewQ" selected>Éxitos Pop/Fiesta (Spotify)</option>
+          <option value="37i9dQZF1DX42dJ8rq4K5A">Synthwave / Retro (Spotify)</option>
+          <option value="37i9dQZF1DXdfEZ7637J9Z">Bandas Sonoras Gaming (Spotify)</option>
+          <option value="custom">-- Pegar Playlist Personalizada --</option>
+        </select>
+        <input type="text" id="spotify-custom-url" class="input-field" placeholder="Pegar enlace de Playlist de Spotify..." style="display: none; width: 100%; background: var(--bg-card); border-color: var(--bg-card-border); color: var(--text-main);">
+      </div>
+
+      <button id="btn-run-search" class="btn">
+        <i class="fa-solid fa-magnifying-glass"></i> Buscar Personaje
+      </button>
+    </section>
+
+    <!-- PANTALLA 3: ANIMACIÓN DE BÚSQUEDA -->
+    <section id="screen-searching" class="screen">
+      <div class="search-container">
+        <div class="search-scanner">
+          <div class="scanner-ring"></div>
+          <div class="scanner-pulse"></div>
+          <i class="fa-solid fa-globe scanner-icon"></i>
+        </div>
+        <h2>Buscando personaje...</h2>
+        <div id="search-logs" class="search-logs">
+          <!-- Logs dinámicos aquí -->
+        </div>
+      </div>
+    </section>
+
+    <!-- PANTALLA 4: JUEGO EN CURSO (GAMEPLAY) -->
+    <section id="screen-gameplay" class="screen">
+      
+      <!-- Bloque de Identidad Secreta -->
+      <div class="character-box">
+        <span class="filter-label" style="margin-bottom: 0;">Personaje Seleccionado</span>
+        <div id="char-name-display" class="character-identity">---------</div>
+        <div id="char-desc-display" class="character-hint">Descripción oculta</div>
+        
+        <!-- Máscara de privacidad para que el host pueda elegir cuándo verlo (especialmente útil en modo manual) -->
+        <div id="blur-overlay" class="blur-overlay">
+          <i class="fa-solid fa-eye-slash" style="font-size: 1.5rem; color: var(--primary);"></i>
+          <span>Toca para ver la respuesta</span>
+        </div>
+      </div>
+
+      <!-- Stats de la Partida -->
+      <div class="game-stats">
+        <div class="stat-card">
+          <div id="stat-questions" class="stat-val">0 / 20</div>
+          <div class="stat-lbl">Preguntas</div>
+        </div>
+        <div class="stat-card">
+          <div id="stat-mode" class="stat-val" style="font-size: 1.1rem; padding: 4px 0;">IA</div>
+          <div class="stat-lbl">Modo Anfitrión</div>
+        </div>
+      </div>
+
+      <!-- Historial de Conversación -->
+      <span class="filter-label">Historial de preguntas</span>
+      <div id="chat-container" class="chat-container">
+        <!-- Mensajes del chat dinámicos -->
+        <div class="chat-bubble player" style="font-style: italic; color: var(--text-muted);">
+          ¡La partida ha comenzado! Hagan su primera pregunta...
+        </div>
+      </div>
+
+      <!-- PANEL DE CONTROLES: MODO IA (Entrada de texto) -->
+      <div id="controls-ai" class="input-container">
+        <input type="text" id="input-question" class="input-field" placeholder="¿Es un deportista? ¿Está vivo?..." autocomplete="off">
+        <button id="btn-ask" class="btn-send" title="Enviar pregunta a la IA">
+          <i class="fa-solid fa-paper-plane"></i>
+        </button>
+      </div>
+
+      <!-- PANEL DE CONTROLES: MODO MANUAL (Botones de Respuesta) -->
+      <div id="controls-manual" class="manual-controls" style="display: none;">
+        <span class="filter-label">Registrar Respuesta del Anfitrión</span>
+        <div class="manual-grid">
+          <button class="btn btn-success btn-manual-answer" data-answer="yes">
+            <i class="fa-solid fa-check"></i> SÍ
+          </button>
+          <button class="btn btn-danger btn-manual-answer" data-answer="no">
+            <i class="fa-solid fa-xmark"></i> NO
+          </button>
+          <button class="btn btn-secondary btn-manual-answer" data-answer="maybe" style="background: rgba(245, 158, 11, 0.15); border-color: #f59e0b; color: #f59e0b;">
+            <i class="fa-solid fa-question"></i> TAL VEZ
+          </button>
+        </div>
+      </div>
+
+      <!-- ACCIONES DE FINALIZACIÓN Y PISTAS -->
+      <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px;">
+        <div style="display: flex; gap: 10px;">
+          <button id="btn-guess-prompt" class="btn btn-secondary btn-accent" style="flex: 1; padding: 10px 0;">
+            <i class="fa-solid fa-trophy"></i> Arriesgar Nombre
+          </button>
+          <button id="btn-get-clue" class="btn btn-secondary" style="flex: 1; padding: 10px 0; background: rgba(139, 92, 246, 0.15); border-color: var(--primary); color: var(--primary);">
+            <i class="fa-solid fa-lightbulb"></i> Pedir Pista (3 Qs)
+          </button>
+        </div>
+        <button id="btn-give-up" class="btn btn-secondary btn-danger" style="width: 100%; padding: 10px 0;">
+          <i class="fa-solid fa-flag"></i> Rendirse
+        </button>
+      </div>
+
+    </section>
+
+    <!-- PANTALLA 5: RESULTADOS -->
+    <section id="screen-results" class="screen">
+      <div class="result-box">
+        <div id="result-emoji" class="result-badge">🏆</div>
+        <h2 id="result-title" class="result-title">¡Victoria!</h2>
+        <p class="subtitle" id="result-subtitle">Han adivinado el personaje secreto.</p>
+        
+        <div class="glass-card" style="width: 100%; text-align: center;">
+          <span class="filter-label">El personaje era</span>
+          <div id="result-char-name" class="result-name">Lionel Messi</div>
+          <p id="result-char-desc" style="margin-top: 10px; font-size: 0.95rem; line-height: 1.5; color: var(--text-muted);">
+            Futbolista argentino de fama mundial...
+          </p>
+        </div>
+
+        <button id="btn-play-again" class="btn">
+          <i class="fa-solid fa-rotate-left"></i> Jugar de Nuevo
+        </button>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- Carga de Base de Datos y Lógica principal -->
+  <script src="database.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

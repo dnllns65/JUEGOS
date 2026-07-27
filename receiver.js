@@ -223,3 +223,73 @@ function setupConnection(connection) {
     tvStatus.innerHTML = `<i class="fa-solid fa-circle-exclamation" style="color: var(--danger); margin-right: 8px;"></i> Desconectado`;
   };
 }
+
+// LÓGICA DE CONEXIÓN POR INTERNET (NTFY.SH SSE)
+let sseSource = null;
+const welcomeSetupBox = document.getElementById('tv-welcome-setup-box');
+const welcomeStatusBox = document.getElementById('tv-welcome-status-box');
+const tvRoomInput = document.getElementById('tv-room-input');
+const tvBtnJoin = document.getElementById('tv-btn-join');
+const tvRoomConnectionStatus = document.getElementById('tv-room-connection-status');
+
+function connectToRoom(salaCode) {
+  if (sseSource) {
+    sseSource.close();
+  }
+
+  tvStatus.innerHTML = `<i class="fa-solid fa-circle-dot pulse-success-active" style="color: var(--accent); margin-right: 8px;"></i> Sala Remota: ${salaCode}`;
+  tvRoomConnectionStatus.textContent = `Conectado a Sala: ${salaCode}`;
+  tvRoomConnectionStatus.style.color = 'var(--accent)';
+  
+  welcomeSetupBox.style.display = 'none';
+  welcomeStatusBox.style.display = 'block';
+
+  sseSource = new EventSource(`https://ntfy.sh/adivina_ai_sala_${salaCode}/sse`);
+  
+  sseSource.onopen = () => {
+    console.log(`Conexión SSE establecida con la sala ${salaCode}`);
+  };
+
+  sseSource.onmessage = (event) => {
+    try {
+      const payload = JSON.parse(event.data);
+      if (payload.message) {
+        const innerMsg = JSON.parse(payload.message);
+        console.log('Mensaje recibido de ntfy:', innerMsg);
+        handleTVMessage(innerMsg.action, innerMsg.data);
+      }
+    } catch (e) {
+      console.error('Error al procesar mensaje SSE:', e);
+    }
+  };
+
+  sseSource.onerror = (err) => {
+    console.error('Error en conexión SSE:', err);
+    tvRoomConnectionStatus.textContent = `Reconectando a Sala: ${salaCode}...`;
+    tvRoomConnectionStatus.style.color = '#e11d48';
+  };
+}
+
+// Leer parámetro sala de la URL (?sala=XXXX) o (?room=XXXX)
+const urlParams = new URLSearchParams(window.location.search);
+const salaParam = urlParams.get('sala') || urlParams.get('room');
+
+if (salaParam) {
+  connectToRoom(salaParam);
+} else {
+  tvBtnJoin.addEventListener('click', () => {
+    const code = tvRoomInput.value.trim();
+    if (code.length === 4 && /^\d+$/.test(code)) {
+      connectToRoom(code);
+    } else {
+      alert('Por favor, ingresa un código de sala válido de 4 números.');
+    }
+  });
+  
+  // También permitir presionar Enter en el input
+  tvRoomInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      tvBtnJoin.click();
+    }
+  });
+}

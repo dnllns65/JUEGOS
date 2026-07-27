@@ -12,14 +12,24 @@
 
   <div class="app-container">
     
-    <!-- HEADER -->
-    <header>
+    <header style="flex-wrap: wrap; gap: 10px;">
       <div class="logo">
         <i class="fa-solid fa-brain"></i> AdivinaQuién <span>AI</span>
       </div>
-      <button id="btn-cast" class="btn-cast" title="Transmitir a la pantalla de TV">
-        <i class="fa-solid fa-tv"></i> Transmitir
-      </button>
+      <div style="display: flex; gap: 8px;">
+        <span id="room-code-display" class="btn-cast" style="background: rgba(139, 92, 246, 0.1); border-color: var(--primary); color: var(--primary); cursor: default; display: none;">
+          <i class="fa-solid fa-house-signal"></i> Sala: <span>----</span>
+        </span>
+        <button id="btn-share-invite" class="btn-cast" title="Enviar invitación a amigos" style="display: none; background: rgba(16, 185, 129, 0.1); border-color: var(--accent); color: var(--accent);">
+          <i class="fa-solid fa-share-nodes"></i> Invitar
+        </button>
+        <button id="btn-sync-tv" class="btn-cast" title="Sincronizar pantallas" style="display: none; background: rgba(59, 130, 246, 0.1); border-color: #3b82f6; color: #3b82f6;">
+          <i class="fa-solid fa-rotate"></i> Sincronizar
+        </button>
+        <button id="btn-cast" class="btn-cast" title="Transmitir a la pantalla de TV">
+          <i class="fa-solid fa-tv"></i> Transmitir
+        </button>
+      </div>
     </header>
 
     <!-- PANTALLA 1: INICIO (HOME) -->
@@ -233,6 +243,11 @@
       </div>
     </section>
 
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast-notification" style="position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(100px); background: linear-gradient(135deg, var(--accent), #059669); color: white; padding: 12px 24px; border-radius: 30px; font-weight: 600; font-size: 0.9rem; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 15px var(--accent-glow); transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 9999; pointer-events: none;">
+    <i class="fa-solid fa-circle-check"></i> <span id="toast-text">¡Invitación copiada!</span>
   </div>
 
   <!-- Carga de Base de Datos y Lógica principal -->

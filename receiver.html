@@ -4,9 +4,91 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AdivinaQuién AI - TV Screen</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=2">
   <!-- FontAwesome para iconos -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    /* Estilos responsivos directos para evitar caché de CSS externo */
+    @media (max-width: 1024px) {
+      body.tv-screen {
+        height: auto !important;
+        overflow-y: auto !important;
+      }
+      .tv-container {
+        width: 100vw !important;
+        height: auto !important;
+        min-height: 100vh !important;
+        padding: 20px 15px !important;
+        justify-content: flex-start !important;
+        gap: 20px !important;
+        box-sizing: border-box !important;
+      }
+      .tv-header {
+        flex-direction: column !important;
+        gap: 12px !important;
+        align-items: center !important;
+        padding-bottom: 15px !important;
+      }
+      .tv-logo {
+        font-size: 1.6rem !important;
+      }
+      .tv-status-badge {
+        padding: 6px 15px !important;
+        font-size: 0.85rem !important;
+      }
+      .tv-main {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 30px !important;
+        margin: 15px 0 !important;
+        height: auto !important;
+      }
+      .tv-panel-left, .tv-panel-right {
+        width: 100% !important;
+        box-sizing: border-box !important;
+      }
+      .tv-panel-left .glass-card, 
+      .result-box .glass-card {
+        width: 100% !important;
+        max-width: 450px !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
+        box-sizing: border-box !important;
+      }
+      .tv-welcome h1 {
+        font-size: 2.2rem !important;
+      }
+      .tv-welcome p {
+        font-size: 1.1rem !important;
+      }
+      .tv-big-scanner {
+        width: 160px !important;
+        height: 160px !important;
+        margin-bottom: 20px !important;
+      }
+      .tv-big-scanner .scanner-icon {
+        font-size: 3.5rem !important;
+      }
+      .tv-question-counter {
+        font-size: 4rem !important;
+      }
+      .tv-chat-container {
+        max-height: 400px !important;
+        overflow-y: auto !important;
+      }
+      .tv-chat-bubble {
+        padding: 12px 18px !important;
+        font-size: 1.15rem !important;
+      }
+      .tv-chat-bubble .chat-meta {
+        font-size: 0.8rem !important;
+      }
+      .tv-footer {
+        font-size: 0.8rem !important;
+        margin-top: 15px !important;
+      }
+    }
+  </style>
 </head>
 <body class="tv-screen">
 
@@ -30,8 +112,20 @@
         
         <!-- Vista 1: Bienvenida -->
         <div id="tv-view-welcome" class="tv-welcome">
-          <h1>¡Prepara tus Preguntas!</h1>
-          <p>El celular anfitrión está configurando la partida...</p>
+          <h1>¡AdivinaQuién AI!</h1>
+          <div id="tv-welcome-setup-box" style="margin-top: 25px;">
+            <p style="margin-bottom: 15px; color: var(--text-muted);">Para jugar de forma remota, ingresa el código de sala de 4 dígitos:</p>
+            <div style="display: flex; gap: 10px; justify-content: center; align-items: center; max-width: 320px; margin: 0 auto;">
+              <input type="text" id="tv-room-input" class="input-field" placeholder="Código" maxlength="4" style="text-align: center; font-size: 1.2rem; padding: 10px; width: 120px; background: var(--bg-card); border-color: var(--bg-card-border); color: var(--text-main); border-radius: 8px;">
+              <button id="tv-btn-join" class="btn" style="padding: 10px 20px; margin-top: 0; white-space: nowrap;">
+                <i class="fa-solid fa-right-to-bracket"></i> Entrar
+              </button>
+            </div>
+          </div>
+          <div id="tv-welcome-status-box" style="display: none; margin-top: 25px;">
+            <p id="tv-room-connection-status" style="font-size: 1.1rem; color: var(--accent); font-weight: bold;"></p>
+            <p style="margin-top: 10px; color: var(--text-muted); font-size: 0.9rem;">Esperando a que el anfitrión inicie la partida...</p>
+          </div>
         </div>
 
         <!-- Vista 2: Animación de Búsqueda -->

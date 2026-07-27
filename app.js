@@ -10,8 +10,15 @@ let presentationConnection = null;
 let askedQuestions = [];
 let cluesRevealedCount = 0;
 
+let roomCode = '';
+
 // Elementos del DOM
 const btnCast = document.getElementById('btn-cast');
+const roomCodeDisplay = document.getElementById('room-code-display');
+const btnShareInvite = document.getElementById('btn-share-invite');
+const btnSyncTv = document.getElementById('btn-sync-tv');
+const toastNotification = document.getElementById('toast-notification');
+const toastText = document.getElementById('toast-text');
 const screens = {
   home: document.getElementById('screen-home'),
   setup: document.getElementById('screen-setup'),
@@ -101,10 +108,11 @@ function handleCastDisconnect() {
 
 // Enviar comandos al Smart TV
 function sendToTV(action, data = {}) {
+  const payloadStr = JSON.stringify({ action, data });
+
   // 1. Enviar por Presentation API si está activa la conexión
   if (presentationConnection && presentationConnection.state === 'connected') {
-    const payload = JSON.stringify({ action, data });
-    presentationConnection.send(payload);
+    presentationConnection.send(payloadStr);
   }
 
   // 2. Enviar por LocalStorage para permitir pruebas locales de sincronización en pestañas separadas
@@ -113,6 +121,18 @@ function sendToTV(action, data = {}) {
     data,
     timestamp: Date.now()
   }));
+
+  // 3. Enviar por Internet usando ntfy.sh (Modo Remoto)
+  if (roomCode) {
+    fetch(`https://ntfy.sh/adivina_ai_sala_${roomCode}`, {
+      method: 'POST',
+      body: payloadStr,
+      headers: {
+        'Title': 'AdivinaQuién AI State Update',
+        'Priority': 'normal'
+      }
+    }).catch(err => console.log('Error enviando sincronización remota:', err));
+  }
 }
 
 // Sincronizar el estado actual completo con la TV
@@ -891,4 +911,74 @@ function endGame(victory) {
 document.getElementById('btn-play-again').addEventListener('click', () => {
   changeScreen('setup');
 });
+
+// LÓGICA DE INVITACIÓN Y CÓDIGO DE SALA (MODO REMOTO)
+function generateRoomCode() {
+  roomCode = Math.floor(1000 + Math.random() * 9000).toString();
+  roomCodeDisplay.querySelector('span').textContent = roomCode;
+  roomCodeDisplay.style.display = 'inline-flex';
+  btnShareInvite.style.display = 'inline-flex';
+  btnSyncTv.style.display = 'inline-flex';
+}
+
+function getSpectatorURL() {
+  const loc = window.location;
+  let path = loc.pathname;
+  if (path.endsWith('index.html')) {
+    path = path.replace('index.html', 'receiver.html');
+  } else if (path.endsWith('/')) {
+    path += 'receiver.html';
+  } else {
+    path += '/receiver.html';
+  }
+  return `${loc.protocol}//${loc.host}${path}?sala=${roomCode}`;
+}
+
+function showToast(message) {
+  toastText.textContent = message;
+  toastNotification.style.transform = 'translateX(-50%) translateY(0)';
+  setTimeout(() => {
+    toastNotification.style.transform = 'translateX(-50%) translateY(100px)';
+  }, 3000);
+}
+
+btnShareInvite.addEventListener('click', async () => {
+  const url = getSpectatorURL();
+  const inviteMessage = `¡Únete a mi partida de AdivinaQuién AI! 🧠🎮\nEntra a este enlace para ver el tablero en tiempo real:\n${url}`;
+
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: 'AdivinaQuién AI',
+        text: inviteMessage,
+        url: url
+      });
+      showToast('¡Invitación compartida!');
+    } catch (err) {
+      console.log('Error compartiendo:', err);
+      copyToClipboard(inviteMessage);
+    }
+  } else {
+    copyToClipboard(inviteMessage);
+  }
+});
+
+btnSyncTv.addEventListener('click', () => {
+  syncWithTV();
+  showToast('¡Pantalla sincronizada!');
+});
+
+function copyToClipboard(text) {
+  navigator.clipboard.writeText(text)
+    .then(() => {
+      showToast('¡Invitación copiada al portapapeles!');
+    })
+    .catch(err => {
+      console.error('Error al copiar:', err);
+      showToast('No se pudo copiar automáticamente.');
+    });
+}
+
+// Inicializar código de sala
+generateRoomCode();
 

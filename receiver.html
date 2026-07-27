@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AdivinaQuién AI - TV Screen</title>
-  <link rel="stylesheet" href="style.css?v=2">
+  <link rel="stylesheet" href="style.css?v=11">
   <!-- FontAwesome para iconos -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
@@ -99,8 +99,13 @@
       <div class="logo tv-logo">
         <i class="fa-solid fa-brain"></i> AdivinaQuién <span>AI</span>
       </div>
-      <div id="tv-status" class="tv-status-badge">
-        <i class="fa-solid fa-circle-dot pulse-success-active" style="color: var(--accent); margin-right: 8px;"></i> Pantalla Activa
+      <div style="display: flex; gap: 10px; align-items: center;">
+        <button id="tv-btn-mute" class="tv-status-badge" style="background: rgba(255, 255, 255, 0.05); border-color: rgba(255, 255, 255, 0.1); width: 42px; height: 42px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; cursor: pointer;" title="Silenciar Música">
+          <i id="tv-mute-icon" class="fa-solid fa-volume-high" style="color: var(--accent);"></i>
+        </button>
+        <div id="tv-status" class="tv-status-badge">
+          <i class="fa-solid fa-circle-dot pulse-success-active" style="color: var(--accent); margin-right: 8px;"></i> Pantalla Activa
+        </div>
       </div>
     </header>
 
@@ -113,17 +118,26 @@
         <!-- Vista 1: Bienvenida -->
         <div id="tv-view-welcome" class="tv-welcome">
           <h1>¡AdivinaQuién AI!</h1>
-          <div id="tv-welcome-setup-box" style="margin-top: 25px;">
-            <p style="margin-bottom: 15px; color: var(--text-muted);">Para jugar de forma remota, ingresa el código de sala de 4 dígitos:</p>
-            <div style="display: flex; gap: 10px; justify-content: center; align-items: center; max-width: 320px; margin: 0 auto;">
+          <div id="tv-welcome-setup-box" style="margin-top: 25px; display: flex; flex-direction: column; gap: 12px; align-items: center;">
+            <p style="margin-bottom: 5px; color: var(--text-muted);">Ingresa tu Nombre y el Código de Sala:</p>
+            <input type="text" id="tv-nickname-input" class="input-field" placeholder="Tu Nombre (Opcional)" style="text-align: center; font-size: 1rem; padding: 10px; width: 220px; background: var(--bg-card); border-color: var(--bg-card-border); color: var(--text-main); border-radius: 8px;">
+            <div style="display: flex; gap: 10px; justify-content: center; align-items: center; max-width: 320px; width: 100%;">
               <input type="text" id="tv-room-input" class="input-field" placeholder="Código" maxlength="4" style="text-align: center; font-size: 1.2rem; padding: 10px; width: 120px; background: var(--bg-card); border-color: var(--bg-card-border); color: var(--text-main); border-radius: 8px;">
-              <button id="tv-btn-join" class="btn" style="padding: 10px 20px; margin-top: 0; white-space: nowrap;">
+              <button id="tv-btn-join" class="btn" style="padding: 10px 20px; margin-top: 0; white-space: nowrap; border-radius: 8px;">
                 <i class="fa-solid fa-right-to-bracket"></i> Entrar
               </button>
             </div>
           </div>
           <div id="tv-welcome-status-box" style="display: none; margin-top: 25px;">
             <p id="tv-room-connection-status" style="font-size: 1.1rem; color: var(--accent); font-weight: bold;"></p>
+            
+            <!-- Editar nombre desde la pantalla de espera -->
+            <div id="waiting-nick-box" style="margin: 15px 0; display: flex; gap: 8px; align-items: center; justify-content: center; flex-wrap: wrap;">
+              <span style="font-size: 0.9rem; color: var(--text-muted);">Tu Nombre:</span>
+              <input type="text" id="waiting-nickname-input" class="input-field" placeholder="Escribe tu nombre..." style="font-size: 0.9rem; padding: 6px 12px; width: 140px; text-align: center; background: rgba(0,0,0,0.3); border: 1px solid var(--bg-card-border); color: var(--text-main); border-radius: 8px; outline: none;">
+              <button id="btn-save-waiting-nick" class="btn" style="padding: 6px 12px; margin: 0; font-size: 0.8rem; border-radius: 8px; text-transform: none; font-weight: bold;">Guardar</button>
+            </div>
+
             <p style="margin-top: 10px; color: var(--text-muted); font-size: 0.9rem;">Esperando a que el anfitrión inicie la partida...</p>
           </div>
         </div>
@@ -170,25 +184,47 @@
 
       </div>
 
-      <!-- LADO DERECHO: CHAT / HISTORIAL DE PREGUNTAS -->
+      <!-- LADO DERECHO: CHAT / HISTORIAL DE PREGUNTAS Y SOCIAL -->
       <div class="tv-panel-right">
-        <span class="filter-label" style="font-size: 1.1rem; margin-bottom: 15px; display: block;">Historial de Respuestas</span>
+        <!-- Tabs de Chat -->
+        <div style="display: flex; gap: 8px; margin-bottom: 15px;">
+          <button id="tv-tab-questions" class="btn" style="flex: 1; padding: 8px; margin: 0; font-size: 0.85rem; border-radius: 8px; background: var(--accent); color: white; font-weight: bold; border-color: var(--accent); text-transform: none; display: flex; align-items: center; justify-content: center; gap: 5px;">
+            <i class="fa-solid fa-circle-question"></i> Preguntas
+          </button>
+          <button id="tv-tab-social" class="btn" style="flex: 1; padding: 8px; margin: 0; font-size: 0.85rem; border-radius: 8px; background: rgba(255,255,255,0.05); color: var(--text-muted); font-weight: bold; border-color: rgba(255,255,255,0.1); text-transform: none; display: flex; align-items: center; justify-content: center; gap: 5px;">
+            <i class="fa-solid fa-comments"></i> Social
+          </button>
+        </div>
         
-        <div class="glass-card" style="flex-grow: 1; padding: 25px; display: flex; flex-direction: column; height: 100%;">
-          <div id="tv-chat-container" class="tv-chat-container">
+        <div class="glass-card" style="flex-grow: 1; padding: 20px; display: flex; flex-direction: column; height: 100%;">
+          
+          <!-- Contenedor del Chat de Preguntas (Activo por defecto) -->
+          <div id="tv-chat-questions-container" class="tv-chat-container" style="flex-grow: 1; overflow-y: auto; max-height: 400px; margin-bottom: 15px; display: flex; flex-direction: column; gap: 12px;">
             <!-- Preguntas y Respuestas sincronizadas -->
             <div class="chat-bubble player tv-chat-bubble" style="font-style: italic; color: var(--text-muted); align-self: center; text-align: center; max-width: 100%;">
-              El historial de preguntas se mostrará aquí en tiempo real.
+              El historial de preguntas se mostrará aquí.
             </div>
+          </div>
+
+          <!-- Contenedor del Chat Social (Escondido por defecto) -->
+          <div id="tv-chat-social-container" class="tv-chat-container" style="flex-grow: 1; overflow-y: auto; max-height: 400px; margin-bottom: 15px; display: none; flex-direction: column; gap: 12px;">
+            <div class="chat-bubble player tv-chat-bubble" style="font-style: italic; color: var(--text-muted); align-self: center; text-align: center; max-width: 100%;">
+              Conversación libre de la sala.
+            </div>
+          </div>
+
+          <!-- Input de Chat para el Espectador -->
+          <div id="tv-chat-input-container" style="display: none; gap: 8px; width: 100%;">
+            <input type="text" id="tv-chat-input" class="input-field" placeholder="Escribe tu pregunta..." style="font-size: 0.95rem; padding: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--bg-card-border); color: var(--text-main); border-radius: 8px; flex-grow: 1; outline: none;">
+            <button id="tv-btn-send-chat" class="btn" style="padding: 10px 15px; margin-top: 0; border-radius: 8px;"><i class="fa-solid fa-paper-plane"></i></button>
           </div>
         </div>
       </div>
 
     </main>
 
-    <div id="tv-spotify-container" style="width: 100%; max-height: 80px; margin-bottom: 15px; border-radius: 12px; overflow: hidden; display: none;">
-      <!-- Iframe se inserta dinámicamente aquí -->
-    </div>
+    <!-- Audio de Fondo (Reemplazo de Spotify) -->
+    <audio id="bg-music" src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3" loop></audio>
 
     <!-- TV FOOTER -->
     <footer class="tv-footer">
@@ -198,6 +234,6 @@
   </div>
 
   <!-- Lógica de la TV -->
-  <script src="receiver.js"></script>
+  <script src="receiver.js?v=14"></script>
 </body>
 </html>

@@ -1,6 +1,12 @@
 // Lógica principal - Controlador del Celular (Anfitrión)
 
+window.onerror = function(message, source, lineno, colno, error) {
+  alert("ERROR DETECTADO:\n" + message + "\nLínea: " + lineno + "\nColumna: " + colno + "\nArchivo: " + source);
+  return false;
+};
+
 let activeCharacter = null;
+const myClientId = 'host_' + Math.random().toString(36).substring(2, 9);
 let gameMode = 'ai'; // 'ai' o 'manual'
 let currentFilters = { region: 'random', area: 'random', nature: 'random', era: 'random' };
 let questionCount = 0;
@@ -11,6 +17,14 @@ let askedQuestions = [];
 let cluesRevealedCount = 0;
 
 let roomCode = '';
+let connectedPlayers = {};
+let globalQuestionsEnabled = true;
+let globalSocialEnabled = true;
+let tvMusicEnabled = true;
+let turnModeEnabled = false;
+let currentPlayerTurnIndex = 0;
+let activeHostChatTab = 'questions'; // 'questions' o 'social'
+let activeLobbyChatTab = 'questions'; // 'questions' o 'social'
 
 // Elementos del DOM
 const btnCast = document.getElementById('btn-cast');
@@ -27,7 +41,8 @@ const screens = {
   results: document.getElementById('screen-results')
 };
 const searchLogs = document.getElementById('search-logs');
-const chatContainer = document.getElementById('chat-container');
+const chatQuestionsContainer = document.getElementById('chat-questions-container');
+const chatSocialContainer = document.getElementById('chat-social-container');
 const inputQuestion = document.getElementById('input-question');
 const btnAsk = document.getElementById('btn-ask');
 const statQuestions = document.getElementById('stat-questions');
@@ -108,7 +123,7 @@ function handleCastDisconnect() {
 
 // Enviar comandos al Smart TV
 function sendToTV(action, data = {}) {
-  const payloadStr = JSON.stringify({ action, data });
+  const payloadStr = JSON.stringify({ action, data, senderId: myClientId });
 
   // 1. Enviar por Presentation API si está activa la conexión
   if (presentationConnection && presentationConnection.state === 'connected') {
@@ -126,45 +141,50 @@ function sendToTV(action, data = {}) {
   if (roomCode) {
     fetch(`https://ntfy.sh/adivina_ai_sala_${roomCode}`, {
       method: 'POST',
-      body: payloadStr,
-      headers: {
-        'Title': 'AdivinaQuién AI State Update',
-        'Priority': 'normal'
-      }
+      body: payloadStr
     }).catch(err => console.log('Error enviando sincronización remota:', err));
   }
+}
+
+function sendBulkToTV(actions) {
+  sendToTV('bulk-sync', { actions });
 }
 
 // Sincronizar el estado actual completo con la TV
 function syncWithTV() {
   const currentScreenId = Object.keys(screens).find(key => screens[key].classList.contains('active'));
+  const actions = [];
   
-  if (currentScreenId === 'home') {
-    sendToTV('show-view', { view: 'welcome' });
-  } else if (currentScreenId === 'setup') {
-    sendToTV('show-view', { view: 'welcome' });
+  if (currentScreenId === 'home' || currentScreenId === 'setup') {
+    actions.push({ action: 'show-view', data: { view: 'welcome' } });
   } else if (currentScreenId === 'searching') {
-    sendToTV('show-view', { view: 'searching' });
+    actions.push({ action: 'show-view', data: { view: 'searching' } });
   } else if (currentScreenId === 'gameplay') {
-    sendToTV('show-view', { view: 'gameplay' });
-    sendToTV('update-stats', {
-      questionCount,
-      maxQuestions: MAX_QUESTIONS,
-      mode: gameMode.toUpperCase(),
-      filters: getReadableFilters()
+    actions.push({ action: 'show-view', data: { view: 'gameplay' } });
+    actions.push({ action: 'update-stats', data: {
+        questionCount,
+        maxQuestions: MAX_QUESTIONS,
+        mode: gameMode.toUpperCase(),
+        filters: getReadableFilters()
+      }
     });
-    sendToTV('sync-chat', { history: chatHistory });
+    actions.push({ action: 'sync-chat', data: { history: chatHistory } });
   } else if (currentScreenId === 'results') {
-    sendToTV('show-view', { view: 'results' });
-    sendToTV('reveal-character', {
-      victory: document.getElementById('result-title').textContent.includes('Victoria'),
-      name: activeCharacter.name,
-      description: activeCharacter.description
+    actions.push({ action: 'show-view', data: { view: 'results' } });
+    actions.push({ action: 'reveal-character', data: {
+        victory: document.getElementById('result-title').textContent.includes('Victoria'),
+        name: activeCharacter.name,
+        description: activeCharacter.description
+      }
     });
-    sendToTV('sync-chat', { history: chatHistory });
+    actions.push({ action: 'sync-chat', data: { history: chatHistory } });
   }
-  // Sincronizar música de Spotify
-  sendSpotifyPlaylist();
+  
+  // Agregar música
+  actions.push({ action: 'music-control', data: { tvMusicEnabled } });
+
+  // Enviar todo en un solo paquete consolidado
+  sendBulkToTV(actions);
 }
 
 function getReadableFilters() {
@@ -189,6 +209,16 @@ function getReadableFilters() {
 function changeScreen(screenName) {
   Object.values(screens).forEach(screen => screen.classList.remove('active'));
   screens[screenName].classList.add('active');
+  
+  const lobbyChatBox = document.getElementById('lobby-chat-box');
+  if (lobbyChatBox) {
+    if (screenName === 'gameplay' || screenName === 'results') {
+      lobbyChatBox.style.display = 'none';
+    } else {
+      lobbyChatBox.style.display = 'flex';
+    }
+  }
+  
   syncWithTV();
 }
 
@@ -218,39 +248,7 @@ document.querySelectorAll('.filter-options button').forEach(button => {
   });
 });
 
-// Manejar inputs y lógica de Spotify
-const spotifyPlaylistSelect = document.getElementById('spotify-playlist-select');
-const spotifyCustomUrl = document.getElementById('spotify-custom-url');
-
-spotifyPlaylistSelect.addEventListener('change', () => {
-  if (spotifyPlaylistSelect.value === 'custom') {
-    spotifyCustomUrl.style.display = 'block';
-  } else {
-    spotifyCustomUrl.style.display = 'none';
-    spotifyCustomUrl.value = '';
-    sendSpotifyPlaylist();
-  }
-});
-
-spotifyCustomUrl.addEventListener('input', () => {
-  sendSpotifyPlaylist();
-});
-
-function getSelectedPlaylistId() {
-  const value = spotifyPlaylistSelect.value;
-  if (value === 'custom') {
-    const url = spotifyCustomUrl.value.trim();
-    if (!url) return "";
-    const match = url.match(/playlist\/([a-zA-Z0-9]+)/);
-    return match ? match[1] : "";
-  }
-  return value;
-}
-
-function sendSpotifyPlaylist() {
-  const playlistId = getSelectedPlaylistId();
-  sendToTV('update-music', { playlistId });
-}
+// (Se eliminó la lógica de Spotify para usar audio local de fondo)
 
 
 // ==========================================================================
@@ -332,7 +330,8 @@ function startGame() {
   chatHistory = [];
   
   // Resetear DOM
-  chatContainer.innerHTML = '';
+  if (chatQuestionsContainer) chatQuestionsContainer.innerHTML = '';
+  if (chatSocialContainer) chatSocialContainer.innerHTML = '';
   statQuestions.textContent = `0 / ${MAX_QUESTIONS}`;
   statMode.textContent = gameMode === 'ai' ? 'ANFITRIÓN IA' : 'MANUAL';
   
@@ -364,8 +363,8 @@ function startGame() {
     filters: getReadableFilters()
   });
 
-  // Enviar música inicial
-  sendSpotifyPlaylist();
+  // Enviar estado de música inicial
+  sendMusicStateToTV();
 }
 
 // Ocultar/Mostrar identidad
@@ -914,11 +913,25 @@ document.getElementById('btn-play-again').addEventListener('click', () => {
 
 // LÓGICA DE INVITACIÓN Y CÓDIGO DE SALA (MODO REMOTO)
 function generateRoomCode() {
-  roomCode = Math.floor(1000 + Math.random() * 9000).toString();
+  let savedCode = localStorage.getItem('adivinador_host_room_code');
+  if (savedCode && savedCode.length === 4 && /^\d+$/.test(savedCode)) {
+    roomCode = savedCode;
+  } else {
+    roomCode = Math.floor(1000 + Math.random() * 9000).toString();
+    localStorage.setItem('adivinador_host_room_code', roomCode);
+  }
   roomCodeDisplay.querySelector('span').textContent = roomCode;
   roomCodeDisplay.style.display = 'inline-flex';
   btnShareInvite.style.display = 'inline-flex';
   btnSyncTv.style.display = 'inline-flex';
+
+  const roomControlPanel = document.getElementById('room-control-panel');
+  if (roomControlPanel) {
+    roomControlPanel.style.display = 'block';
+  }
+
+  // Escuchar mensajes entrantes en la sala
+  listenToRoom();
 }
 
 function getSpectatorURL() {
@@ -977,6 +990,515 @@ function copyToClipboard(text) {
       console.error('Error al copiar:', err);
       showToast('No se pudo copiar automáticamente.');
     });
+}
+
+// Lógica de Escucha y Chat Bidireccional en el Host
+let hostSse = null;
+function listenToRoom() {
+  if (hostSse) {
+    hostSse.close();
+  }
+  hostSse = new EventSource(`https://ntfy.sh/adivina_ai_sala_${roomCode}/sse`);
+  hostSse.onmessage = (event) => {
+    try {
+      const payload = JSON.parse(event.data);
+      if (payload.message) {
+        const innerMsg = JSON.parse(payload.message);
+        if (innerMsg.senderId === myClientId) return;
+        
+        if (innerMsg.action === 'chat-message') {
+          const channel = innerMsg.data.channel || 'questions';
+          // Agregar mensaje de chat localmente
+          addLocalChatMessage(innerMsg.data.sender, innerMsg.data.text, innerMsg.data.type, channel);
+          
+          // Si el modo turnos está activo y el mensaje viene de un invitado en preguntas, avanzar de turno automáticamente
+          if (turnModeEnabled && innerMsg.data.sender === 'Invitado' && channel === 'questions') {
+            advanceTurn();
+          }
+        } else if (innerMsg.action === 'guest-joined') {
+          // Registrar nuevo jugador en la sala
+          const { clientId, name } = innerMsg.data;
+          
+          // Si no existía, agregarlo
+          if (!connectedPlayers[clientId]) {
+            const shouldBeQuestionsEnabled = !turnModeEnabled;
+            connectedPlayers[clientId] = { 
+              name: name || `Invitado #${clientId.slice(-4)}`, 
+              questionsEnabled: shouldBeQuestionsEnabled,
+              socialEnabled: true
+            };
+          }
+          
+          // Actualizar UI
+          renderPlayerList();
+          
+          // Notificar al invitado nuevo del estado de chat y música
+          sendChatControlState();
+          sendMusicStateToTV();
+        }
+      }
+    } catch (e) {
+      console.error("Error procesando mensaje en host SSE:", e);
+    }
+  };
+}
+
+function addLocalChatMessage(sender, text, type = '', channel = 'questions') {
+  // Traducir el sender para la UI local
+  let senderClass = 'player';
+  if (sender === 'Anfitrión') {
+    senderClass = 'host chat';
+  } else if (sender === 'Invitado') {
+    senderClass = 'guest';
+  } else if (sender === 'Sistema') {
+    senderClass = 'system';
+  }
+
+  chatHistory.push({ sender: senderClass, text, type, channel });
+  
+  // Helper para crear una burbuja
+  const createBubble = () => {
+    const bubble = document.createElement('div');
+    bubble.className = `chat-bubble ${senderClass}`;
+    
+    const meta = document.createElement('span');
+    meta.className = 'chat-meta';
+    meta.textContent = `${sender}:`;
+    
+    const content = document.createElement('span');
+    content.textContent = text;
+    
+    bubble.appendChild(meta);
+    bubble.appendChild(content);
+    
+    // Si es un mensaje de invitado en preguntas, agregar botón rápido de copiar
+    if (sender === 'Invitado' && channel === 'questions') {
+      const copyBtn = document.createElement('button');
+      copyBtn.className = 'btn-copy-question';
+      copyBtn.innerHTML = `<i class="fa-solid fa-copy"></i> Usar`;
+      copyBtn.style.cssText = 'background: rgba(139, 92, 246, 0.25); border: 1px solid var(--primary); color: var(--text-main); font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; margin-top: 5px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; width: fit-content; font-family: inherit; font-weight: bold; border-radius: 4px; border: 1px solid var(--primary);';
+      copyBtn.addEventListener('click', () => {
+        inputQuestion.value = text;
+        inputQuestion.focus();
+        showToast('Mensaje copiado al cuadro de pregunta');
+      });
+      bubble.appendChild(copyBtn);
+    }
+    
+    return bubble;
+  };
+
+  // 1. Añadir al chat principal de Gameplay
+  const gameplayContainer = channel === 'social' ? chatSocialContainer : chatQuestionsContainer;
+  if (gameplayContainer) {
+    const defaultPlayText = gameplayContainer.querySelector('.chat-bubble[style*="italic"]');
+    if (defaultPlayText) defaultPlayText.remove();
+    
+    gameplayContainer.appendChild(createBubble());
+    gameplayContainer.scrollTop = gameplayContainer.scrollHeight;
+  }
+
+  // 2. Añadir al chat del Lobby
+  const lobbyContainer = document.getElementById(channel === 'social' ? 'lobby-chat-social-container' : 'lobby-chat-questions-container');
+  if (lobbyContainer) {
+    const defaultLobbyText = lobbyContainer.querySelector('div[style*="italic"]');
+    if (defaultLobbyText) defaultLobbyText.remove();
+    
+    lobbyContainer.appendChild(createBubble());
+    lobbyContainer.scrollTop = lobbyContainer.scrollHeight;
+  }
+
+  // Indicar nueva actividad en la pestaña inactiva de Gameplay
+  if (channel !== activeHostChatTab) {
+    const tabButton = channel === 'social' ? document.getElementById('host-tab-social') : document.getElementById('host-tab-questions');
+    if (tabButton) {
+      const icon = channel === 'social' ? 'fa-comments' : 'fa-circle-question';
+      const textLabel = channel === 'social' ? 'Social' : 'Preguntas';
+      tabButton.innerHTML = `<i class="fa-solid ${icon}"></i> ${textLabel} <span style="background: var(--danger); width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-left: 3px;"></span>`;
+    }
+  }
+
+  // Indicar nueva actividad en la pestaña inactiva del Lobby
+  if (channel !== activeLobbyChatTab) {
+    const lobbyTabButton = channel === 'social' ? document.getElementById('lobby-tab-social') : document.getElementById('lobby-tab-questions');
+    if (lobbyTabButton) {
+      const textLabel = channel === 'social' ? 'Social' : 'Preguntas';
+      lobbyTabButton.innerHTML = `${textLabel} <span style="background: var(--danger); width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-left: 3px;"></span>`;
+    }
+  }
+}
+
+// Enviar comentario de chat por el Host (Gameplay)
+const btnChatToggle = document.getElementById('btn-chat-toggle');
+
+function sendHostChatMessage(channel) {
+  const text = inputQuestion.value.trim();
+  if (!text) return;
+  
+  addLocalChatMessage('Anfitrión', text, 'chat', channel);
+  sendToTV('chat-message', { sender: 'Anfitrión', text: text, type: 'chat', channel });
+  
+  inputQuestion.value = '';
+}
+
+if (btnAsk) {
+  btnAsk.addEventListener('click', () => sendHostChatMessage('questions'));
+}
+if (btnChatToggle) {
+  btnChatToggle.addEventListener('click', () => sendHostChatMessage('social'));
+}
+
+// Configurar Tabs de Chat en Gameplay (Host)
+const hostTabQuestions = document.getElementById('host-tab-questions');
+const hostTabSocial = document.getElementById('host-tab-social');
+if (hostTabQuestions && hostTabSocial) {
+  hostTabQuestions.addEventListener('click', () => {
+    activeHostChatTab = 'questions';
+    if (chatQuestionsContainer) chatQuestionsContainer.style.display = 'flex';
+    if (chatSocialContainer) chatSocialContainer.style.display = 'none';
+    hostTabQuestions.style.background = 'var(--accent)';
+    hostTabQuestions.style.color = 'white';
+    hostTabQuestions.style.borderColor = 'var(--accent)';
+    hostTabSocial.style.background = 'rgba(255,255,255,0.05)';
+    hostTabSocial.style.color = 'var(--text-muted)';
+    hostTabSocial.style.borderColor = 'rgba(255,255,255,0.1)';
+    hostTabQuestions.innerHTML = `<i class="fa-solid fa-circle-question"></i> Preguntas`;
+  });
+
+  hostTabSocial.addEventListener('click', () => {
+    activeHostChatTab = 'social';
+    if (chatSocialContainer) chatSocialContainer.style.display = 'flex';
+    if (chatQuestionsContainer) chatQuestionsContainer.style.display = 'none';
+    hostTabSocial.style.background = 'var(--accent)';
+    hostTabSocial.style.color = 'white';
+    hostTabSocial.style.borderColor = 'var(--accent)';
+    hostTabQuestions.style.background = 'rgba(255,255,255,0.05)';
+    hostTabQuestions.style.color = 'var(--text-muted)';
+    hostTabQuestions.style.borderColor = 'rgba(255,255,255,0.1)';
+    hostTabSocial.innerHTML = `<i class="fa-solid fa-comments"></i> Social`;
+  });
+}
+
+// Configurar Tabs de Chat en Lobby (Host)
+activeLobbyChatTab = 'questions';
+const lobbyTabQuestions = document.getElementById('lobby-tab-questions');
+const lobbyTabSocial = document.getElementById('lobby-tab-social');
+const lobbyChatQuestionsContainer = document.getElementById('lobby-chat-questions-container');
+const lobbyChatSocialContainer = document.getElementById('lobby-chat-social-container');
+
+if (lobbyTabQuestions && lobbyTabSocial) {
+  lobbyTabQuestions.addEventListener('click', () => {
+    activeLobbyChatTab = 'questions';
+    if (lobbyChatQuestionsContainer) lobbyChatQuestionsContainer.style.display = 'flex';
+    if (lobbyChatSocialContainer) lobbyChatSocialContainer.style.display = 'none';
+    lobbyTabQuestions.style.background = 'var(--accent)';
+    lobbyTabQuestions.style.color = 'white';
+    lobbyTabQuestions.style.borderColor = 'var(--accent)';
+    lobbyTabSocial.style.background = 'rgba(255,255,255,0.05)';
+    lobbyTabSocial.style.color = 'var(--text-muted)';
+    lobbyTabSocial.style.borderColor = 'rgba(255,255,255,0.1)';
+    lobbyTabQuestions.innerHTML = `Preguntas`;
+  });
+
+  lobbyTabSocial.addEventListener('click', () => {
+    activeLobbyChatTab = 'social';
+    if (lobbyChatSocialContainer) lobbyChatSocialContainer.style.display = 'flex';
+    if (lobbyChatQuestionsContainer) lobbyChatQuestionsContainer.style.display = 'none';
+    lobbyTabSocial.style.background = 'var(--accent)';
+    lobbyTabSocial.style.color = 'white';
+    lobbyTabSocial.style.borderColor = 'var(--accent)';
+    lobbyTabQuestions.style.background = 'rgba(255,255,255,0.05)';
+    lobbyTabQuestions.style.color = 'var(--text-muted)';
+    lobbyTabQuestions.style.borderColor = 'rgba(255,255,255,0.1)';
+    lobbyTabSocial.innerHTML = `Social`;
+  });
+}
+
+// LÓGICA DE CONTROL DE JUGADORES Y CHAT (HOST)
+const playerListContainer = document.getElementById('player-list-container');
+const btnToggleQuestionsChat = document.getElementById('btn-toggle-questions-chat');
+const btnToggleSocialChat = document.getElementById('btn-toggle-social-chat');
+const btnToggleTvMusic = document.getElementById('btn-toggle-tv-music');
+const btnToggleTurnMode = document.getElementById('btn-toggle-turn-mode');
+const btnNextTurn = document.getElementById('btn-next-turn');
+
+function renderPlayerList() {
+  if (!playerListContainer) return;
+  
+  const players = Object.keys(connectedPlayers);
+  if (players.length === 0) {
+    playerListContainer.innerHTML = `<span style="color: var(--text-muted); font-style: italic;">Esperando a que se unan jugadores...</span>`;
+    return;
+  }
+  
+  playerListContainer.innerHTML = '';
+  
+  players.forEach((clientId, idx) => {
+    const player = connectedPlayers[clientId];
+    
+    const playerRow = document.createElement('div');
+    playerRow.style.display = 'flex';
+    playerRow.style.justify = 'space-between';
+    playerRow.style.alignItems = 'center';
+    playerRow.style.background = 'rgba(255, 255, 255, 0.03)';
+    playerRow.style.padding = '6px 12px';
+    playerRow.style.borderRadius = '6px';
+    playerRow.style.border = '1px solid var(--bg-card-border)';
+    playerRow.style.gap = '10px';
+    
+    const nameSpan = document.createElement('span');
+    if (turnModeEnabled && idx === currentPlayerTurnIndex) {
+      nameSpan.innerHTML = `<i class="fa-solid fa-hourglass-half pulse-success-active" style="color: var(--accent); margin-right: 6px;"></i> <strong>${player.name} (Su Turno)</strong>`;
+    } else {
+      nameSpan.textContent = player.name;
+    }
+    nameSpan.style.fontWeight = '500';
+    nameSpan.style.overflow = 'hidden';
+    nameSpan.style.textOverflow = 'ellipsis';
+    nameSpan.style.whiteSpace = 'nowrap';
+    nameSpan.style.flexGrow = '1';
+    
+    // Contenedor de botones de mute
+    const mutesContainer = document.createElement('div');
+    mutesContainer.style.display = 'flex';
+    mutesContainer.style.gap = '4px';
+    
+    // 1. Botón Mute Preguntas
+    const muteQuestionsBtn = document.createElement('button');
+    muteQuestionsBtn.className = 'btn';
+    muteQuestionsBtn.style.padding = '4px 6px';
+    muteQuestionsBtn.style.margin = '0';
+    muteQuestionsBtn.style.fontSize = '0.75rem';
+    muteQuestionsBtn.style.borderRadius = '4px';
+    muteQuestionsBtn.style.display = 'inline-flex';
+    muteQuestionsBtn.style.alignItems = 'center';
+    muteQuestionsBtn.style.justify = 'center';
+    muteQuestionsBtn.style.gap = '3px';
+    muteQuestionsBtn.style.textTransform = 'none';
+    muteQuestionsBtn.style.fontWeight = 'bold';
+    
+    if (player.questionsEnabled) {
+      muteQuestionsBtn.innerHTML = `<i class="fa-solid fa-circle-question"></i> Preg`;
+      muteQuestionsBtn.style.background = 'rgba(16, 185, 129, 0.15)';
+      muteQuestionsBtn.style.color = 'var(--accent)';
+      muteQuestionsBtn.style.borderColor = 'var(--accent)';
+    } else {
+      muteQuestionsBtn.innerHTML = `<i class="fa-solid fa-comment-slash"></i> Preg`;
+      muteQuestionsBtn.style.background = 'rgba(239, 68, 68, 0.15)';
+      muteQuestionsBtn.style.color = 'var(--danger)';
+      muteQuestionsBtn.style.borderColor = 'var(--danger)';
+    }
+    
+    if (turnModeEnabled) {
+      muteQuestionsBtn.disabled = true;
+      muteQuestionsBtn.style.opacity = '0.5';
+      muteQuestionsBtn.style.cursor = 'not-allowed';
+    } else {
+      muteQuestionsBtn.disabled = false;
+      muteQuestionsBtn.style.opacity = '1';
+      muteQuestionsBtn.style.cursor = 'pointer';
+    }
+    
+    muteQuestionsBtn.addEventListener('click', () => {
+      if (turnModeEnabled) return;
+      player.questionsEnabled = !player.questionsEnabled;
+      renderPlayerList();
+      sendChatControlState();
+    });
+    
+    // 2. Botón Mute Social
+    const muteSocialBtn = document.createElement('button');
+    muteSocialBtn.className = 'btn';
+    muteSocialBtn.style.padding = '4px 6px';
+    muteSocialBtn.style.margin = '0';
+    muteSocialBtn.style.fontSize = '0.75rem';
+    muteSocialBtn.style.borderRadius = '4px';
+    muteSocialBtn.style.display = 'inline-flex';
+    muteSocialBtn.style.alignItems = 'center';
+    muteSocialBtn.style.justify = 'center';
+    muteSocialBtn.style.gap = '3px';
+    muteSocialBtn.style.textTransform = 'none';
+    muteSocialBtn.style.fontWeight = 'bold';
+    
+    if (player.socialEnabled) {
+      muteSocialBtn.innerHTML = `<i class="fa-solid fa-comments"></i> Soc`;
+      muteSocialBtn.style.background = 'rgba(16, 185, 129, 0.15)';
+      muteSocialBtn.style.color = 'var(--accent)';
+      muteSocialBtn.style.borderColor = 'var(--accent)';
+    } else {
+      muteSocialBtn.innerHTML = `<i class="fa-solid fa-comment-slash"></i> Soc`;
+      muteSocialBtn.style.background = 'rgba(239, 68, 68, 0.15)';
+      muteSocialBtn.style.color = 'var(--danger)';
+      muteSocialBtn.style.borderColor = 'var(--danger)';
+    }
+    
+    muteSocialBtn.addEventListener('click', () => {
+      player.socialEnabled = !player.socialEnabled;
+      renderPlayerList();
+      sendChatControlState();
+    });
+    
+    mutesContainer.appendChild(muteQuestionsBtn);
+    mutesContainer.appendChild(muteSocialBtn);
+    
+    playerRow.appendChild(nameSpan);
+    playerRow.appendChild(mutesContainer);
+    playerListContainer.appendChild(playerRow);
+  });
+}
+
+function sendChatControlState() {
+  const mutedQuestions = Object.keys(connectedPlayers).filter(id => !connectedPlayers[id].questionsEnabled);
+  const mutedSocial = Object.keys(connectedPlayers).filter(id => !connectedPlayers[id].socialEnabled);
+  sendToTV('chat-control', { 
+    globalQuestionsEnabled, 
+    globalSocialEnabled, 
+    mutedQuestions, 
+    mutedSocial 
+  });
+}
+
+function sendMusicStateToTV() {
+  sendToTV('music-control', { tvMusicEnabled });
+}
+
+function advanceTurn() {
+  const playerIds = Object.keys(connectedPlayers);
+  if (playerIds.length === 0) return;
+  
+  currentPlayerTurnIndex = (currentPlayerTurnIndex + 1) % playerIds.length;
+  
+  playerIds.forEach((id, idx) => {
+    connectedPlayers[id].questionsEnabled = (idx === currentPlayerTurnIndex);
+  });
+  
+  renderPlayerList();
+  sendChatControlState();
+  
+  const nextPlayer = connectedPlayers[playerIds[currentPlayerTurnIndex]];
+  addLocalChatMessage('Sistema', `Es el turno de ${nextPlayer.name}`, 'system', 'questions');
+  sendToTV('chat-message', { sender: 'Sistema', text: `Es el turno de ${nextPlayer.name}`, type: 'system', channel: 'questions' });
+}
+
+function enableTurnMode() {
+  const playerIds = Object.keys(connectedPlayers);
+  if (playerIds.length === 0) return;
+  
+  currentPlayerTurnIndex = 0;
+  playerIds.forEach((id, idx) => {
+    connectedPlayers[id].questionsEnabled = (idx === 0);
+  });
+  
+  renderPlayerList();
+  sendChatControlState();
+  
+  const firstPlayer = connectedPlayers[playerIds[0]];
+  addLocalChatMessage('Sistema', `Modo Turnos activado. Turno de: ${firstPlayer.name}`, 'system', 'questions');
+  sendToTV('chat-message', { sender: 'Sistema', text: `Modo Turnos activado. Turno de: ${firstPlayer.name}`, type: 'system', channel: 'questions' });
+}
+
+function disableTurnMode() {
+  const playerIds = Object.keys(connectedPlayers);
+  playerIds.forEach(id => {
+    connectedPlayers[id].questionsEnabled = true;
+  });
+  
+  renderPlayerList();
+  sendChatControlState();
+  
+  addLocalChatMessage('Sistema', `Modo Turnos desactivado. Chat de preguntas libre.`, 'system', 'questions');
+  sendToTV('chat-message', { sender: 'Sistema', text: `Modo Turnos desactivado. Chat de preguntas libre.`, type: 'system', channel: 'questions' });
+}
+
+if (btnToggleQuestionsChat) {
+  btnToggleQuestionsChat.addEventListener('click', () => {
+    globalQuestionsEnabled = !globalQuestionsEnabled;
+    if (globalQuestionsEnabled) {
+      btnToggleQuestionsChat.textContent = 'Habilitado';
+      btnToggleQuestionsChat.style.background = 'var(--accent)';
+    } else {
+      btnToggleQuestionsChat.textContent = 'Deshabilitado';
+      btnToggleQuestionsChat.style.background = 'var(--danger)';
+    }
+    sendChatControlState();
+  });
+}
+
+if (btnToggleSocialChat) {
+  btnToggleSocialChat.addEventListener('click', () => {
+    globalSocialEnabled = !globalSocialEnabled;
+    if (globalSocialEnabled) {
+      btnToggleSocialChat.textContent = 'Habilitado';
+      btnToggleSocialChat.style.background = 'var(--accent)';
+    } else {
+      btnToggleSocialChat.textContent = 'Deshabilitado';
+      btnToggleSocialChat.style.background = 'var(--danger)';
+    }
+    sendChatControlState();
+  });
+}
+
+if (btnToggleTvMusic) {
+  btnToggleTvMusic.addEventListener('click', () => {
+    tvMusicEnabled = !tvMusicEnabled;
+    if (tvMusicEnabled) {
+      btnToggleTvMusic.textContent = 'Sonando';
+      btnToggleTvMusic.style.background = 'var(--accent)';
+    } else {
+      btnToggleTvMusic.textContent = 'Silenciada';
+      btnToggleTvMusic.style.background = '#4b5563'; // gris
+    }
+    sendMusicStateToTV();
+  });
+}
+
+if (btnToggleTurnMode) {
+  btnToggleTurnMode.addEventListener('click', () => {
+    turnModeEnabled = !turnModeEnabled;
+    if (turnModeEnabled) {
+      btnToggleTurnMode.textContent = 'Activo';
+      btnToggleTurnMode.style.background = 'var(--accent)';
+      if (btnNextTurn) btnNextTurn.style.display = 'inline-flex';
+      enableTurnMode();
+    } else {
+      btnToggleTurnMode.textContent = 'Desactivado';
+      btnToggleTurnMode.style.background = '#4b5563';
+      if (btnNextTurn) btnNextTurn.style.display = 'none';
+      disableTurnMode();
+    }
+  });
+}
+
+if (btnNextTurn) {
+  btnNextTurn.addEventListener('click', () => {
+    if (turnModeEnabled) {
+      advanceTurn();
+    }
+  });
+}
+
+// Permitir al Anfitrión responder en el chat del Lobby
+const lobbyChatInput = document.getElementById('lobby-chat-input');
+const btnSendLobbyChat = document.getElementById('btn-send-lobby-chat');
+
+function sendHostLobbyChatMessage() {
+  if (!lobbyChatInput) return;
+  const text = lobbyChatInput.value.trim();
+  if (!text) return;
+  
+  addLocalChatMessage('Anfitrión', text, 'chat', activeLobbyChatTab);
+  sendToTV('chat-message', { sender: 'Anfitrión', text: text, type: 'chat', channel: activeLobbyChatTab });
+  
+  lobbyChatInput.value = '';
+}
+
+if (btnSendLobbyChat && lobbyChatInput) {
+  btnSendLobbyChat.addEventListener('click', sendHostLobbyChatMessage);
+  lobbyChatInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      sendHostLobbyChatMessage();
+    }
+  });
 }
 
 // Inicializar código de sala

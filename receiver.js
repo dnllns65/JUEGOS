@@ -154,6 +154,10 @@ function handleTVMessage(action, data) {
       addSpectatorChatMessage(data.sender, data.text, data.type, data.channel);
       break;
 
+    case 'clue-revealed':
+      addSpectatorChatMessage('Sistema', `💡 PISTA para ${data.sender} (${data.questionsLeft}/20 Qs): ${data.clueText}`, 'maybe', 'questions');
+      break;
+
     case 'chat-control':
       isGlobalQuestionsEnabled = data.globalQuestionsEnabled;
       isGlobalSocialEnabled = data.globalSocialEnabled;
@@ -526,6 +530,15 @@ function addSpectatorChatMessage(sender, text, type = '', channel = 'questions')
   }
 }
 
+let myQuestionsLeft = 20;
+
+function updateMyQuestionsDisplay() {
+  const tvMyQsVal = document.getElementById('tv-my-qs-val');
+  if (tvMyQsVal) {
+    tvMyQsVal.textContent = myQuestionsLeft;
+  }
+}
+
 const tvChatInput = document.getElementById('tv-chat-input');
 const tvBtnSendChat = document.getElementById('tv-btn-send-chat');
 
@@ -533,11 +546,23 @@ function sendSpectatorChatMessage() {
   const text = tvChatInput.value.trim();
   if (!text) return;
   
+  if (activeChatTab === 'questions') {
+    if (myQuestionsLeft <= 0) {
+      alert('Has agotado tus 20 preguntas disponibles.');
+      return;
+    }
+    myQuestionsLeft--;
+    updateMyQuestionsDisplay();
+  }
+  
+  const senderName = (typeof guestPlayerName !== 'undefined' && guestPlayerName) ? guestPlayerName : 'Invitado';
+  const formattedSender = activeChatTab === 'questions' ? `${senderName} (${myQuestionsLeft}/20 Qs)` : senderName;
+  
   // Mostrar localmente
-  addSpectatorChatMessage('Invitado', text, 'chat', activeChatTab);
+  addSpectatorChatMessage(senderName, text, 'chat', activeChatTab);
   
   // Enviar a la sala por ntfy.sh
-  sendRoomMessage('chat-message', { sender: 'Invitado', text: text, type: 'chat', channel: activeChatTab });
+  sendRoomMessage('chat-message', { sender: formattedSender, text: text, type: 'chat', channel: activeChatTab, questionsLeft: myQuestionsLeft });
   
   tvChatInput.value = '';
 }
@@ -548,6 +573,24 @@ if (tvBtnSendChat && tvChatInput) {
     if (e.key === 'Enter') {
       sendSpectatorChatMessage();
     }
+  });
+}
+
+const tvBtnClue = document.getElementById('tv-btn-clue');
+if (tvBtnClue) {
+  tvBtnClue.addEventListener('click', () => {
+    if (myQuestionsLeft <= 0) {
+      alert('No tienes preguntas disponibles para pedir una pista.');
+      return;
+    }
+    myQuestionsLeft--;
+    updateMyQuestionsDisplay();
+    
+    const senderName = (typeof guestPlayerName !== 'undefined' && guestPlayerName) ? guestPlayerName : 'Invitado';
+    sendRoomMessage('request-clue', {
+      sender: senderName,
+      questionsLeft: myQuestionsLeft
+    });
   });
 }
 
@@ -696,3 +739,84 @@ if (tvBtnMute) {
     }
   });
 }
+
+// ==========================================================================
+// MODAL Y LÓGICA DE ARRIESGAR PERSONAJE PARA EL INVITADO / ESPECTADOR
+// ==========================================================================
+const tvBtnGuess = document.getElementById('tv-btn-guess');
+const tvGuessModal = document.getElementById('tv-guess-modal');
+const tvBtnCloseGuess = document.getElementById('tv-btn-close-guess');
+const tvBtnCancelGuess = document.getElementById('tv-btn-cancel-guess');
+const tvBtnSubmitGuess = document.getElementById('tv-btn-submit-guess');
+const tvGuessInputModal = document.getElementById('tv-guess-input-modal');
+
+if (tvBtnGuess && tvGuessModal) {
+  tvBtnGuess.addEventListener('click', () => {
+    tvGuessModal.style.display = 'flex';
+    if (tvGuessInputModal) {
+      setTimeout(() => tvGuessInputModal.focus(), 100);
+    }
+  });
+}
+
+function closeGuestGuessModal() {
+  if (tvGuessModal) {
+    tvGuessModal.style.display = 'none';
+  }
+}
+
+if (tvBtnCloseGuess) tvBtnCloseGuess.addEventListener('click', closeGuestGuessModal);
+if (tvBtnCancelGuess) tvBtnCancelGuess.addEventListener('click', closeGuestGuessModal);
+
+function submitGuestGuess() {
+  if (!tvGuessInputModal) return;
+  const guessText = tvGuessInputModal.value.trim();
+  if (!guessText) return;
+
+  closeGuestGuessModal();
+  tvGuessInputModal.value = '';
+
+  const senderName = (typeof guestPlayerName !== 'undefined' && guestPlayerName) ? guestPlayerName : 'Invitado';
+
+  // Transmitir intento de arriesgar a la sala (al Host y TV)
+  sendTVMessage('guess-attempt', {
+    sender: senderName,
+    guess: guessText,
+    type: 'guess',
+    channel: 'questions'
+  });
+}
+
+if (tvBtnSubmitGuess) {
+  tvBtnSubmitGuess.addEventListener('click', submitGuestGuess);
+}
+if (tvGuessInputModal) {
+  tvGuessInputModal.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      submitGuestGuess();
+    }
+  });
+}
+
+// ==========================================================================
+// MODAL DE INSTRUCTIVO DE JUEGO Y REGLAS PARA EL INVITADO
+// ==========================================================================
+const tvInstructionsModal = document.getElementById('tv-instructions-modal');
+const tvBtnOpenInstructions = document.getElementById('tv-btn-open-instructions');
+const tvBtnCloseInstructions = document.getElementById('tv-btn-close-instructions');
+const tvBtnUnderstandInstructions = document.getElementById('tv-btn-understand-instructions');
+
+if (tvBtnOpenInstructions && tvInstructionsModal) {
+  tvBtnOpenInstructions.addEventListener('click', () => {
+    tvInstructionsModal.style.display = 'flex';
+  });
+}
+
+function closeTVInstructions() {
+  if (tvInstructionsModal) {
+    tvInstructionsModal.style.display = 'none';
+  }
+}
+
+if (tvBtnCloseInstructions) tvBtnCloseInstructions.addEventListener('click', closeTVInstructions);
+if (tvBtnUnderstandInstructions) tvBtnUnderstandInstructions.addEventListener('click', closeTVInstructions);

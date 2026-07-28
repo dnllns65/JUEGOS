@@ -1458,6 +1458,17 @@ function listenToRoom() {
             sendToTV('chat-message', { sender: 'Sistema', text: `❌ ${sender} arriesgó "${guess}" (Incorrecto)`, type: 'error', channel: 'questions' });
             showToast(`❌ ${sender} arriesgó "${guess}" (Incorrecto)`);
           }
+        } else if (innerMsg.action === 'request-clue') {
+          const { sender, questionsLeft } = innerMsg.data;
+          cluesRevealedCount++;
+          let clueText = "";
+          if (activeCharacter.clues && activeCharacter.clues.length > 0) {
+            clueText = activeCharacter.clues[(cluesRevealedCount - 1) % activeCharacter.clues.length];
+          } else {
+            clueText = activeCharacter.description || "Sin más pistas.";
+          }
+          addLocalChatMessage('Sistema', `💡 PISTA para ${sender} (${questionsLeft}/20 Qs): ${clueText}`, 'maybe', 'questions');
+          sendToTV('clue-revealed', { sender, questionsLeft, clueText });
         } else if (innerMsg.action === 'guest-joined') {
           // Registrar nuevo jugador en la sala
           const { clientId, name } = innerMsg.data;

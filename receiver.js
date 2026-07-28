@@ -18,6 +18,7 @@ const views = {
 const tvStatus = document.getElementById('tv-status');
 const tvSearchLogs = document.getElementById('tv-search-logs');
 const tvQuestionsVal = document.getElementById('tv-questions-val');
+const tvGameCountVal = document.getElementById('tv-game-count-val');
 const tvActiveFilters = document.getElementById('tv-active-filters');
 const tvChatQuestionsContainer = document.getElementById('tv-chat-questions-container');
 const tvChatSocialContainer = document.getElementById('tv-chat-social-container');
@@ -210,6 +211,7 @@ function handleTVMessage(action, data) {
     case 'start-game':
       showView('gameplay');
       tvQuestionsVal.textContent = `0 / ${data.maxQuestions}`;
+      if (tvGameCountVal && data.gamesCount) tvGameCountVal.textContent = `#${data.gamesCount}`;
       tvChatContainer.innerHTML = '';
       tvSearchLogs.innerHTML = '';
       
@@ -234,6 +236,10 @@ function handleTVMessage(action, data) {
 
     case 'update-questions-count':
       tvQuestionsVal.textContent = `${data.count} / 20`;
+      break;
+
+    case 'update-games-count':
+      if (tvGameCountVal) tvGameCountVal.textContent = `#${data.count}`;
       break;
 
     case 'add-chat-bubble':

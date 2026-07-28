@@ -27,6 +27,9 @@
         <button id="btn-share-invite" class="btn-cast" title="Enviar invitación a amigos" style="display: none; background: rgba(16, 185, 129, 0.1); border-color: var(--accent); color: var(--accent);">
           <i class="fa-solid fa-share-nodes"></i> Invitar
         </button>
+        <span id="game-count-badge" class="btn-cast" title="Partidas Jugadas" style="background: rgba(139, 92, 246, 0.15); border-color: var(--accent); color: var(--accent); cursor: default; font-weight: bold;">
+          <i class="fa-solid fa-gamepad"></i> Partida <span id="game-count-val">#1</span>
+        </span>
         <button id="btn-sync-tv" class="btn-cast" title="Sincronizar pantallas" style="display: none; background: rgba(59, 130, 246, 0.1); border-color: #3b82f6; color: #3b82f6; padding: 6px 10px; margin: 0; min-width: auto; display: inline-flex; align-items: center; justify-content: center;">
           <i class="fa-solid fa-rotate"></i>
         </button>
@@ -98,9 +101,12 @@
         <p class="subtitle">La IA seleccionará un personaje misterioso basándose en tus filtros. Los demás jugadores deben adivinarlo haciendo preguntas de SÍ o NO.</p>
       </div>
       
-      <div class="home-buttons">
+      <div class="home-buttons" style="display: flex; flex-direction: column; align-items: center; gap: 12px;">
         <button id="btn-start-setup" class="btn btn-accent">
           <i class="fa-solid fa-play"></i> Configurar Partida
+        </button>
+        <button id="btn-open-instructions" class="btn" style="background: rgba(255,255,255,0.05); border: 1px solid var(--bg-card-border); color: var(--text-muted); padding: 10px 20px; font-size: 0.9rem; border-radius: 8px; font-weight: 600; max-width: 250px; text-transform: none;">
+          <i class="fa-solid fa-circle-question" style="color: var(--accent);"></i> Instructivo de Juego
         </button>
       </div>
     </section>
@@ -332,8 +338,59 @@
     <i class="fa-solid fa-circle-check"></i> <span id="toast-text">¡Invitación copiada!</span>
   </div>
 
+  <!-- MODAL DE INSTRUCTIVO Y MODALIDADES -->
+  <div id="instructions-modal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); z-index: 999; align-items: center; justify-content: center; backdrop-filter: blur(5px);">
+    <div class="glass-card" style="max-width: 500px; width: 90%; max-height: 85vh; overflow-y: auto; padding: 25px; border-color: var(--primary); background: var(--bg-card);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--bg-card-border); padding-bottom: 10px;">
+        <h2 style="font-size: 1.3rem; color: var(--primary); margin: 0; display: flex; align-items: center; gap: 8px;">
+          <i class="fa-solid fa-book-open"></i> Instructivo de Juego
+        </h2>
+        <button id="btn-close-instructions" style="background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">&times;</button>
+      </div>
+
+      <!-- Sección 1: Objetivo del Juego -->
+      <div style="margin-bottom: 20px;">
+        <h3 style="font-size: 1.05rem; color: var(--accent); margin-bottom: 8px;"><i class="fa-solid fa-bullseye"></i> 1. Objetivo del Juego</h3>
+        <p style="font-size: 0.9rem; color: var(--text-main); line-height: 1.5; margin: 0;">
+          Los jugadores deben adivinar el <strong>personaje secreto</strong> formulando preguntas que solo puedan responderse con <strong>SÍ</strong>, <strong>NO</strong> o <strong>TAL VEZ</strong> en un máximo de 20 intentos.
+        </p>
+      </div>
+
+      <!-- Sección 2: Modalidades de Anfitrión -->
+      <div style="margin-bottom: 20px;">
+        <h3 style="font-size: 1.05rem; color: var(--accent); margin-bottom: 10px;"><i class="fa-solid fa-sliders"></i> 2. Modalidades de Anfitrión</h3>
+        
+        <div style="background: rgba(255,255,255,0.03); padding: 12px; border-radius: 8px; border: 1px solid var(--bg-card-border); margin-bottom: 10px;">
+          <h4 style="margin: 0 0 5px 0; color: #a78bfa; font-size: 0.95rem;"><i class="fa-solid fa-robot"></i> Anfitrión IA (Automático)</h4>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0; line-height: 1.4;">
+            La Inteligencia Artificial elige automáticamente un personaje basado en tus filtros (Deportes, Música, Historia, etc.) y evalúa y responde las preguntas de los jugadores en tiempo real.
+          </p>
+        </div>
+
+        <div style="background: rgba(255,255,255,0.03); padding: 12px; border-radius: 8px; border: 1px solid var(--bg-card-border);">
+          <h4 style="margin: 0 0 5px 0; color: #a78bfa; font-size: 0.95rem;"><i class="fa-solid fa-user-tie"></i> Anfitrión Humano (Manual)</h4>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0; line-height: 1.4;">
+            El anfitrión humano escribe el personaje que él elija. La app busca automáticamente los datos en <strong>Wikipedia / Internet</strong> (o permite cargarlos manualmente) y el anfitrión responde con los botones SÍ / NO / TAL VEZ.
+          </p>
+        </div>
+      </div>
+
+      <!-- Sección 3: Transmisión a la TV y Multijugador -->
+      <div style="margin-bottom: 20px;">
+        <h3 style="font-size: 1.05rem; color: var(--accent); margin-bottom: 8px;"><i class="fa-solid fa-tv"></i> 3. Pantalla de TV / Invitados</h3>
+        <p style="font-size: 0.9rem; color: var(--text-main); line-height: 1.5; margin: 0;">
+          Haz clic en el botón de <strong>Transmitir <i class="fa-solid fa-tv"></i></strong> para abrir la pantalla de TV en un Smart TV o pestaña secundaria. Los amigos pueden escanear el código QR o ingresar el código de sala para enviar preguntas y chatear.
+        </p>
+      </div>
+
+      <button id="btn-understand-instructions" class="btn btn-accent" style="width: 100%; padding: 12px; font-weight: bold; border-radius: 8px; margin-top: 10px;">
+        ¡Entendido, a jugar!
+      </button>
+    </div>
+  </div>
+
   <!-- Carga de Base de Datos y Lógica principal -->
-  <script src="database.js?v=22"></script>
-  <script src="app.js?v=22"></script>
+  <script src="database.js?v=23"></script>
+  <script src="app.js?v=23"></script>
 </body>
 </html>

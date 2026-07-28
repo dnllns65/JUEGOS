@@ -11,10 +11,17 @@ let gameMode = 'ai'; // 'ai' o 'manual'
 let currentFilters = { region: 'random', area: 'random', nature: 'random', era: 'random' };
 let questionCount = 0;
 const MAX_QUESTIONS = 20;
+let totalGamesPlayed = parseInt(localStorage.getItem('adivina_games_count') || '1', 10);
 let chatHistory = [];
 let presentationConnection = null;
 let askedQuestions = [];
 let cluesRevealedCount = 0;
+
+function updateGameCounterDisplay() {
+  const badgeVal = document.getElementById('game-count-val');
+  if (badgeVal) badgeVal.textContent = `#${totalGamesPlayed}`;
+  sendToTV('update-games-count', { count: totalGamesPlayed });
+}
 
 let roomCode = '';
 let connectedPlayers = {};
@@ -451,6 +458,11 @@ function startGame() {
   askedQuestions = [];
   chatHistory = [];
   
+  // Incrementar contador de partidas jugadas
+  totalGamesPlayed++;
+  localStorage.setItem('adivina_games_count', totalGamesPlayed);
+  updateGameCounterDisplay();
+  
   // Resetear DOM
   if (chatQuestionsContainer) chatQuestionsContainer.innerHTML = '';
   if (chatSocialContainer) chatSocialContainer.innerHTML = '';
@@ -482,7 +494,8 @@ function startGame() {
   sendToTV('start-game', {
     maxQuestions: MAX_QUESTIONS,
     mode: gameMode.toUpperCase(),
-    filters: getReadableFilters()
+    filters: getReadableFilters(),
+    gamesCount: totalGamesPlayed
   });
 
   // Enviar estado de música inicial
@@ -1748,4 +1761,30 @@ if (btnSendLobbyChat && lobbyChatInput) {
 
 // Inicializar código de sala
 generateRoomCode();
+
+// Event listeners para Modal de Instructivo y Contador de Partidas
+document.addEventListener('DOMContentLoaded', () => {
+  updateGameCounterDisplay();
+  
+  const instructionsModal = document.getElementById('instructions-modal');
+  const btnOpenInstructions = document.getElementById('btn-open-instructions');
+  const btnCloseInstructions = document.getElementById('btn-close-instructions');
+  const btnUnderstandInstructions = document.getElementById('btn-understand-instructions');
+
+  if (btnOpenInstructions && instructionsModal) {
+    btnOpenInstructions.addEventListener('click', () => {
+      instructionsModal.style.display = 'flex';
+    });
+  }
+  if (btnCloseInstructions && instructionsModal) {
+    btnCloseInstructions.addEventListener('click', () => {
+      instructionsModal.style.display = 'none';
+    });
+  }
+  if (btnUnderstandInstructions && instructionsModal) {
+    btnUnderstandInstructions.addEventListener('click', () => {
+      instructionsModal.style.display = 'none';
+    });
+  }
+});
 

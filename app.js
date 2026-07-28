@@ -80,26 +80,31 @@ if (navigator.presentation) {
   btnCast.style.display = 'flex'; // Siempre visible para móvil
 }
 
-// Conectar / Desconectar Proyección
+// Conectar / Desconectar Proyección (Con selección fresca de dispositivo)
 btnCast.addEventListener('click', () => {
   if (presentationConnection) {
-    // Si ya hay conexión, cerrarla
-    presentationConnection.terminate();
-  } else {
-    // Iniciar nueva conexión
-    if (presentationRequest) {
-      presentationRequest.start()
+    try {
+      presentationConnection.terminate();
+    } catch (e) {}
+    presentationConnection = null;
+  }
+
+  if (window.PresentationRequest) {
+    try {
+      const freshRequest = new PresentationRequest(['receiver.html']);
+      freshRequest.start()
         .then(connection => {
           setupPresentationConnection(connection);
         })
         .catch(err => {
-          console.error('Error al iniciar transmisión, abriendo en pestaña nueva:', err);
-          window.open(getSpectatorURL(), '_blank');
+          console.log('Transmisión cancelada o fallo al conectar:', err);
         });
-    } else {
-      // Fallback para celulares/móviles: abrir el enlace de la TV en una pestaña nueva
+    } catch (err) {
+      console.warn('Presentation API error:', err);
       window.open(getSpectatorURL(), '_blank');
     }
+  } else {
+    window.open(getSpectatorURL(), '_blank');
   }
 });
 
@@ -418,9 +423,18 @@ document.getElementById('btn-run-search').addEventListener('click', async () => 
 });
 
 function selectCharacter() {
-  // Filtrar base de datos
   const candidates = CHARACTERS.filter(char => {
-    // Si el filtro es random, pasa automáticamente. Si no, debe coincidir.
+    const isDead = char.deathYear !== null && char.deathYear !== undefined;
+    
+    // Regla estricta 1: Si el filtro es Actualidad, NUNCA seleccionar un personaje muerto!
+    if (currentFilters.era === 'current' && isDead) {
+      return false;
+    }
+    // Regla estricta 2: Si el filtro es Histórico, NUNCA seleccionar un personaje vivo de la actualidad!
+    if (currentFilters.era === 'historical' && !isDead && char.filters.era === 'current') {
+      return false;
+    }
+
     const regionMatch = currentFilters.region === 'random' || char.filters.region === currentFilters.region;
     const areaMatch = currentFilters.area === 'random' || char.filters.area === currentFilters.area;
     const natureMatch = currentFilters.nature === 'random' || char.filters.nature === currentFilters.nature;
@@ -428,16 +442,35 @@ function selectCharacter() {
     
     return regionMatch && areaMatch && natureMatch && eraMatch;
   });
-  
-  console.log('Candidatos que coinciden con los filtros:', candidates);
-  
+
+  console.log('Candidatos que coinciden exactamente con los filtros:', candidates);
+
   if (candidates.length > 0) {
-    // Seleccionar uno aleatorio de los coincidentes
     activeCharacter = candidates[Math.floor(Math.random() * candidates.length)];
   } else {
-    // Si no coincide ninguno, tomar uno aleatorio general
-    console.warn('No se encontraron personajes con los filtros seleccionados, seleccionando uno general...');
-    activeCharacter = CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)];
+    // Fallback inteligente: Respetar estrictamente Región, Época y Exclusión de Muertos en Actualidad
+    console.warn('Filtro combinado estricto sin candidatos. Aplicando fallback inteligente...');
+    const smartFallback = CHARACTERS.filter(char => {
+      const isDead = char.deathYear !== null && char.deathYear !== undefined;
+      if (currentFilters.era === 'current' && isDead) return false;
+      if (currentFilters.region !== 'random' && char.filters.region !== currentFilters.region) return false;
+      if (currentFilters.nature !== 'random' && char.filters.nature !== currentFilters.nature) return false;
+      return true;
+    });
+
+    if (smartFallback.length > 0) {
+      activeCharacter = smartFallback[Math.floor(Math.random() * smartFallback.length)];
+    } else {
+      // Fallback de seguridad respetando vivo/muerto según la época elegida
+      const eraFallback = CHARACTERS.filter(char => {
+        const isDead = char.deathYear !== null && char.deathYear !== undefined;
+        if (currentFilters.era === 'current' && isDead) return false;
+        return true;
+      });
+      activeCharacter = eraFallback.length > 0 
+        ? eraFallback[Math.floor(Math.random() * eraFallback.length)]
+        : CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)];
+    }
   }
 }
 
@@ -775,13 +808,24 @@ function evaluateQuestionSemantics(question) {
     return hasMultiWords ? { text: "SÍ", type: 'yes' } : { text: "NO", type: 'no' };
   }
 
-  // 2. Estado vital / Vigencia (¿Está vivo hoy en día? / ¿Sigue activo?)
-  if (containsKeyword(question, "vivo") || containsKeyword(question, "activo") || containsKeyword(question, "vigente") || containsKeyword(question, "fallecido") || containsKeyword(question, "muerto") || containsKeyword(question, "hoy en dia")) {
-    const isAliveOrActive = (attrs.vivo === true || activeCharacter.deathYear === null || attrs.activo === true || attrs.vigente === true) && attrs.muerto !== true;
-    if (containsKeyword(question, "fallecido") || containsKeyword(question, "muerto")) {
-      return !isAliveOrActive ? { text: "SÍ", type: 'yes' } : { text: "NO", type: 'no' };
+  // ESTADO VITAL Y ACTUALIDAD (Si es real: o está vivo o está muerto. Si está muerto, NO es actual).
+  const isDeadChar = attrs.muerto === true || (activeCharacter.deathYear !== null && activeCharacter.deathYear !== undefined);
+  const isAliveChar = isRealChar ? !isDeadChar : (attrs.vivo === true || attrs.activo === true || activeCharacter.deathYear === null);
+
+  if (containsKeyword(question, "actual") || containsKeyword(question, "actualidad") || containsKeyword(question, "de la actualidad") || containsKeyword(question, "hoy en dia")) {
+    if (isDeadChar) {
+      return { text: "NO", type: 'no' }; // Si está muerto, NUNCA es actual
     }
-    return isAliveOrActive ? { text: "SÍ", type: 'yes' } : { text: "NO", type: 'no' };
+    const isCurrent = (activeCharacter.filters && activeCharacter.filters.era === 'current') || attrs.siglo_xxi === true || isAliveChar;
+    return isCurrent ? { text: "SÍ", type: 'yes' } : { text: "NO", type: 'no' };
+  }
+
+  if (containsKeyword(question, "vivo") || containsKeyword(question, "viva") || containsKeyword(question, "sigue vivo") || containsKeyword(question, "esta vivo") || containsKeyword(question, "con vida")) {
+    return isAliveChar ? { text: "SÍ", type: 'yes' } : { text: "NO", type: 'no' };
+  }
+
+  if (containsKeyword(question, "fallecido") || containsKeyword(question, "muerto") || containsKeyword(question, "murio") || containsKeyword(question, "esta muerto") || containsKeyword(question, "ya fallecio")) {
+    return isDeadChar ? { text: "SÍ", type: 'yes' } : { text: "NO", type: 'no' };
   }
 
   // 3. Género Femenino / Masculino
@@ -1400,6 +1444,19 @@ function listenToRoom() {
           // Si el modo turnos está activo y el mensaje viene de un invitado en preguntas, avanzar de turno automáticamente
           if (turnModeEnabled && innerMsg.data.sender === 'Invitado' && channel === 'questions') {
             advanceTurn();
+          }
+        } else if (innerMsg.action === 'guess-attempt') {
+          const { sender, guess } = innerMsg.data;
+          const isCorrect = checkGuessMatch(guess, activeCharacter);
+          
+          if (isCorrect) {
+            addLocalChatMessage('Sistema', `🎉 ¡${sender} ARRIESGÓ Y ADIVINÓ A ${activeCharacter.name.toUpperCase()}!`, 'victory', 'questions');
+            sendToTV('chat-message', { sender: 'Sistema', text: `🎉 ¡${sender} ARRIESGÓ Y ADIVINÓ A ${activeCharacter.name.toUpperCase()}!`, type: 'victory', channel: 'questions' });
+            endGame(true);
+          } else {
+            addLocalChatMessage('Sistema', `❌ ${sender} arriesgó "${guess}" (Incorrecto)`, 'error', 'questions');
+            sendToTV('chat-message', { sender: 'Sistema', text: `❌ ${sender} arriesgó "${guess}" (Incorrecto)`, type: 'error', channel: 'questions' });
+            showToast(`❌ ${sender} arriesgó "${guess}" (Incorrecto)`);
           }
         } else if (innerMsg.action === 'guest-joined') {
           // Registrar nuevo jugador en la sala

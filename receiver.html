@@ -13,9 +13,13 @@
 
     gtag('config', 'G-N4RY154RKB');
   </script>
-  <link rel="icon" type="image/png" href="icon.png">
-  <link rel="apple-touch-icon" href="icon.png">
-  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="icon.png?v=2">
+  <link rel="icon" type="image/png" sizes="512x512" href="icon.png?v=2">
+  <link rel="apple-touch-icon" sizes="180x180" href="icon.png?v=2">
+  <link rel="manifest" href="manifest.json?v=2">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="AdivinaQuién AI">
   <meta name="theme-color" content="#8b5cf6">
   <link rel="stylesheet" href="style.css?v=17">
   <!-- FontAwesome para iconos -->
@@ -227,14 +231,39 @@
           </div>
 
           <!-- Input de Chat para el Espectador -->
-          <div id="tv-chat-input-container" style="display: none; gap: 8px; width: 100%;">
-            <input type="text" id="tv-chat-input" class="input-field" placeholder="Escribe tu pregunta..." style="font-size: 0.95rem; padding: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--bg-card-border); color: var(--text-main); border-radius: 8px; flex-grow: 1; outline: none;">
-            <button id="tv-btn-send-chat" class="btn" style="padding: 10px 15px; margin-top: 0; border-radius: 8px;"><i class="fa-solid fa-paper-plane"></i></button>
+          <div id="tv-chat-input-container" style="display: none; gap: 8px; width: 100%; flex-wrap: wrap;">
+            <div style="display: flex; gap: 8px; width: 100%;">
+              <input type="text" id="tv-chat-input" class="input-field" placeholder="Escribe tu pregunta..." style="font-size: 0.95rem; padding: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--bg-card-border); color: var(--text-main); border-radius: 8px; flex-grow: 1; outline: none;">
+              <button id="tv-btn-send-chat" class="btn" style="padding: 10px 15px; margin-top: 0; border-radius: 8px;" title="Enviar Pregunta"><i class="fa-solid fa-paper-plane"></i></button>
+            </div>
+            <button id="tv-btn-guess" class="btn" style="width: 100%; padding: 8px; margin-top: 5px; border-radius: 8px; background: linear-gradient(135deg, #ef4444, #f97316); border: none; font-weight: bold; color: white; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 0.9rem;" title="Arriesgar el nombre del personaje">
+              <i class="fa-solid fa-bullseye"></i> Arriesgar Personaje
+            </button>
           </div>
         </div>
       </div>
 
     </main>
+
+    <!-- Modal de Arriesgar para el Invitado -->
+    <div id="tv-guess-modal" class="modal-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(6px); z-index: 9999; align-items: center; justify-content: center;">
+      <div class="modal-content glass-card" style="max-width: 420px; width: 90%; padding: 25px; border-radius: 16px; border: 1px solid rgba(239, 68, 68, 0.4); box-shadow: 0 10px 30px rgba(239, 68, 68, 0.3); background: #12131c;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+          <h3 style="margin: 0; color: #ef4444; font-size: 1.3rem; font-family: var(--font-title); display: flex; align-items: center; gap: 8px;">
+            <i class="fa-solid fa-bullseye"></i> Arriesgar Personaje
+          </h3>
+          <button id="tv-btn-close-guess" style="background: none; border: none; color: var(--text-muted); font-size: 1.2rem; cursor: pointer;"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <p style="font-size: 0.95rem; color: var(--text-muted); margin-bottom: 15px;">
+          ¿Quién crees que es el personaje misterioso? Si aciertas, ¡ganas la partida!
+        </p>
+        <input type="text" id="tv-guess-input-modal" class="input-field" placeholder="Ej: Lionel Messi, Goku, Darth Vader..." style="width: 100%; padding: 12px; font-size: 1rem; border-radius: 8px; margin-bottom: 15px; background: rgba(0,0,0,0.5); border: 1px solid var(--bg-card-border); color: white; outline: none;">
+        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+          <button id="tv-btn-cancel-guess" class="btn" style="background: rgba(255,255,255,0.1); color: var(--text-muted); border: none; padding: 10px 15px; border-radius: 8px;">Cancelar</button>
+          <button id="tv-btn-submit-guess" class="btn" style="background: linear-gradient(135deg, #ef4444, #f97316); color: white; border: none; padding: 10px 20px; font-weight: bold; border-radius: 8px; cursor: pointer;">¡Arriesgar!</button>
+        </div>
+      </div>
+    </div>
 
     <!-- Audio de Fondo (Reemplazo de Spotify) -->
     <audio id="bg-music" src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3" loop></audio>
@@ -247,6 +276,6 @@
   </div>
 
   <!-- Lógica de la TV -->
-  <script src="receiver.js?v=27"></script>
+  <script src="receiver.js?v=31"></script>
 </body>
 </html>

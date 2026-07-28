@@ -722,7 +722,44 @@ function evaluateQuestionSemantics(question) {
 
   // --- REGLAS SEMÁNTICAS ESTÁNDAR (19 PREGUNTAS Y ATRIBUTOS) ---
   const attrs = activeCharacter.attributes || {};
-  const lowerQ = question.toLowerCase();
+  const bYear = activeCharacter.birthYear;
+
+  // 1. REALIDAD VS FICCIÓN (Estricta Exclusión Mutua)
+  const isRealChar = attrs.real === true || (activeCharacter.filters && activeCharacter.filters.nature === 'real') || (attrs.ficticio === false);
+  const isFictionalChar = !isRealChar;
+
+  if (containsKeyword(question, "ficticio") || containsKeyword(question, "ficcion") || containsKeyword(question, "fantasia") || containsKeyword(question, "inventado") || containsKeyword(question, "creado") || containsKeyword(question, "personaje de ficcion")) {
+    return isFictionalChar ? { text: "SÍ", type: 'yes' } : { text: "NO", type: 'no' };
+  }
+  if (containsKeyword(question, "real") || containsKeyword(question, "existio") || containsKeyword(question, "existe") || containsKeyword(question, "vida real") || containsKeyword(question, "carne y hueso")) {
+    return isRealChar ? { text: "SÍ", type: 'yes' } : { text: "NO", type: 'no' };
+  }
+
+  // --- EVALUACIÓN DE SIGLOS Y ÉPOCAS HISTÓRICAS ---
+
+  // Siglo XIX (Años 1801 a 1900)
+  if (containsKeyword(question, "siglo xix") || containsKeyword(question, "siglo 19") || containsKeyword(question, "siglo diecinueve") || containsKeyword(question, "años 1800") || containsKeyword(question, "del 1800")) {
+    const isSigloXIX = attrs.siglo_xix === true || (bYear !== null && bYear !== undefined && bYear >= 1801 && bYear <= 1900);
+    return isSigloXIX ? { text: "SÍ", type: 'yes' } : { text: "NO", type: 'no' };
+  }
+
+  // Siglo XX (Años 1901 a 2000)
+  if (containsKeyword(question, "siglo xx") || containsKeyword(question, "siglo 20") || containsKeyword(question, "siglo veinte") || containsKeyword(question, "años 1900") || containsKeyword(question, "del 1900")) {
+    const isSigloXX = attrs.siglo_xx === true || (bYear !== null && bYear !== undefined && bYear >= 1901 && bYear <= 2000);
+    return isSigloXX ? { text: "SÍ", type: 'yes' } : { text: "NO", type: 'no' };
+  }
+
+  // Siglo XXI (Años 2001 al presente)
+  if (containsKeyword(question, "siglo xxi") || containsKeyword(question, "siglo 21") || containsKeyword(question, "siglo veintiuno") || containsKeyword(question, "años 2000") || containsKeyword(question, "del 2000")) {
+    const isSigloXXI = attrs.siglo_xxi === true || (bYear !== null && bYear !== undefined && bYear >= 2001) || (activeCharacter.filters && activeCharacter.filters.era === 'current');
+    return isSigloXXI ? { text: "SÍ", type: 'yes' } : { text: "NO", type: 'no' };
+  }
+
+  // Contexto Histórico Anterior a 1900 / Antigüedad
+  if (containsKeyword(question, "anterior a 1900") || containsKeyword(question, "antes de 1900") || containsKeyword(question, "anterior al año 1900") || containsKeyword(question, "antiguedad") || containsKeyword(question, "epoca antigua") || containsKeyword(question, "antiguo")) {
+    const isBefore1900 = (bYear !== null && bYear !== undefined && bYear < 1900) || (activeCharacter.filters && activeCharacter.filters.era === 'historical') || attrs.anterior_1900 === true;
+    return isBefore1900 ? { text: "SÍ", type: 'yes' } : { text: "NO", type: 'no' };
+  }
 
   // 17. ¿La primera letra de su nombre/apodo común está entre la A y la M en el abecedario?
   if ((containsKeyword(question, "letra") || containsKeyword(question, "abecedario") || containsKeyword(question, "alfabeto")) && (containsKeyword(question, "a y m") || containsKeyword(question, "a y la m") || containsKeyword(question, "entre la a") || containsKeyword(question, "primera letra"))) {
@@ -736,21 +773,6 @@ function evaluateQuestionSemantics(question) {
     const wordCount = activeCharacter.name.trim().split(/\s+/).length;
     const hasMultiWords = wordCount >= 2;
     return hasMultiWords ? { text: "SÍ", type: 'yes' } : { text: "NO", type: 'no' };
-  }
-
-  // 19. ¿Su obra/hito principal se lanzó o ocurrió en el siglo XXI?
-  if (containsKeyword(question, "siglo xxi") || containsKeyword(question, "siglo 21") || containsKeyword(question, "siglo veintiuno") || containsKeyword(question, "año 2000") || containsKeyword(question, "2000")) {
-    const is21stCentury = attrs.siglo_xxi === true || (activeCharacter.birthYear && activeCharacter.birthYear >= 2000) || (activeCharacter.filters && activeCharacter.filters.era === 'current');
-    return is21stCentury ? { text: "SÍ", type: 'yes' } : { text: "NO", type: 'no' };
-  }
-
-  // 1. Realidad / Ficción (¿Es un personaje de ficción?)
-  if (containsKeyword(question, "ficcion") || containsKeyword(question, "ficticio") || containsKeyword(question, "fantasia") || containsKeyword(question, "inventado") || containsKeyword(question, "creado") || containsKeyword(question, "realidad")) {
-    const isFictional = (activeCharacter.filters && activeCharacter.filters.nature === 'fictional') || attrs.ficticio === true || attrs.real === false;
-    if (containsKeyword(question, "real") && !containsKeyword(question, "ficticio") && !containsKeyword(question, "ficcion")) {
-      return !isFictional ? { text: "SÍ", type: 'yes' } : { text: "NO", type: 'no' };
-    }
-    return isFictional ? { text: "SÍ", type: 'yes' } : { text: "NO", type: 'no' };
   }
 
   // 2. Estado vital / Vigencia (¿Está vivo hoy en día? / ¿Sigue activo?)
@@ -803,12 +825,6 @@ function evaluateQuestionSemantics(question) {
   if (containsKeyword(question, "villano") || containsKeyword(question, "antagonista") || containsKeyword(question, "malo") || containsKeyword(question, "enemigo") || containsKeyword(question, "malvado")) {
     const isVillain = attrs.villano === true || attrs.antagonista === true || attrs.malo === true;
     return isVillain ? { text: "SÍ", type: 'yes' } : { text: "NO", type: 'no' };
-  }
-
-  // 9. ¿Su origen o contexto histórico es anterior al año 1900?
-  if (containsKeyword(question, "1900") || containsKeyword(question, "siglo xix") || containsKeyword(question, "siglo 19") || containsKeyword(question, "anterior al año 1900") || containsKeyword(question, "siglo xviii") || containsKeyword(question, "antiguo")) {
-    const isBefore1900 = (activeCharacter.birthYear && activeCharacter.birthYear < 1900) || (activeCharacter.filters && activeCharacter.filters.era === 'historical') || attrs.anterior_1900 === true;
-    return isBefore1900 ? { text: "SÍ", type: 'yes' } : { text: "NO", type: 'no' };
   }
 
   // 10. ¿Está dirigido principalmente a un público infantil?

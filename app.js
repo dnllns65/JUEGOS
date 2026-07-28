@@ -482,8 +482,7 @@ function startGame() {
   sendToTV('start-game', {
     maxQuestions: MAX_QUESTIONS,
     mode: gameMode.toUpperCase(),
-    filters: getReadableFilters(),
-    gamesCount: totalGamesPlayed
+    filters: getReadableFilters()
   });
 
   // Enviar estado de música inicial
@@ -721,35 +720,139 @@ function evaluateQuestionSemantics(question) {
     }
   }
 
-  // --- REGLAS SEMÁNTICAS ESTÁNDAR ---
-  const attrs = activeCharacter.attributes;
-  
-  // Género
-  if (containsKeyword(question, "mujer") || containsKeyword(question, "femenina") || containsKeyword(question, "chica") || containsKeyword(question, "ella") || containsKeyword(question, "femenino")) {
-    return attrs.mujer ? { text: "SÍ", type: 'yes' } : { text: "NO", type: 'no' };
+  // --- REGLAS SEMÁNTICAS ESTÁNDAR (19 PREGUNTAS Y ATRIBUTOS) ---
+  const attrs = activeCharacter.attributes || {};
+  const lowerQ = question.toLowerCase();
+
+  // 17. ¿La primera letra de su nombre/apodo común está entre la A y la M en el abecedario?
+  if ((containsKeyword(question, "letra") || containsKeyword(question, "abecedario") || containsKeyword(question, "alfabeto")) && (containsKeyword(question, "a y m") || containsKeyword(question, "a y la m") || containsKeyword(question, "entre la a") || containsKeyword(question, "primera letra"))) {
+    const firstChar = activeCharacter.name.trim().charAt(0).toUpperCase();
+    const isBetweenAandM = firstChar >= 'A' && firstChar <= 'M';
+    return isBetweenAandM ? { text: "SÍ", type: 'yes' } : { text: "NO", type: 'no' };
   }
-  if (containsKeyword(question, "hombre") || containsKeyword(question, "masculino") || containsKeyword(question, "varon") || containsKeyword(question, "chico") || containsKeyword(question, "el")) {
-    if (containsKeyword(question, "es el") || containsKeyword(question, "el es") || containsKeyword(question, "hombre") || containsKeyword(question, "varon") || containsKeyword(question, "el")) {
-      return attrs.hombre ? { text: "SÍ", type: 'yes' } : { text: "NO", type: 'no' };
+
+  // 18. ¿Su nombre tiene más de dos palabras? (Ej: "Harry Potter", "El Guasón")
+  if (containsKeyword(question, "dos palabras") || containsKeyword(question, "mas de dos palabras") || containsKeyword(question, "tres palabras") || containsKeyword(question, "varias palabras")) {
+    const wordCount = activeCharacter.name.trim().split(/\s+/).length;
+    const hasMultiWords = wordCount >= 2;
+    return hasMultiWords ? { text: "SÍ", type: 'yes' } : { text: "NO", type: 'no' };
+  }
+
+  // 19. ¿Su obra/hito principal se lanzó o ocurrió en el siglo XXI?
+  if (containsKeyword(question, "siglo xxi") || containsKeyword(question, "siglo 21") || containsKeyword(question, "siglo veintiuno") || containsKeyword(question, "año 2000") || containsKeyword(question, "2000")) {
+    const is21stCentury = attrs.siglo_xxi === true || (activeCharacter.birthYear && activeCharacter.birthYear >= 2000) || (activeCharacter.filters && activeCharacter.filters.era === 'current');
+    return is21stCentury ? { text: "SÍ", type: 'yes' } : { text: "NO", type: 'no' };
+  }
+
+  // 1. Realidad / Ficción (¿Es un personaje de ficción?)
+  if (containsKeyword(question, "ficcion") || containsKeyword(question, "ficticio") || containsKeyword(question, "fantasia") || containsKeyword(question, "inventado") || containsKeyword(question, "creado") || containsKeyword(question, "realidad")) {
+    const isFictional = (activeCharacter.filters && activeCharacter.filters.nature === 'fictional') || attrs.ficticio === true || attrs.real === false;
+    if (containsKeyword(question, "real") && !containsKeyword(question, "ficticio") && !containsKeyword(question, "ficcion")) {
+      return !isFictional ? { text: "SÍ", type: 'yes' } : { text: "NO", type: 'no' };
     }
+    return isFictional ? { text: "SÍ", type: 'yes' } : { text: "NO", type: 'no' };
   }
-  
-  // Estado vital / Época
-  if (containsKeyword(question, "vivo") || containsKeyword(question, "viva") || containsKeyword(question, "sigue vivo") || containsKeyword(question, "sigue con vida") || containsKeyword(question, "actualidad") || containsKeyword(question, "hoy en dia")) {
-    return attrs.vivo ? { text: "SÍ", type: 'yes' } : { text: "NO", type: 'no' };
+
+  // 2. Estado vital / Vigencia (¿Está vivo hoy en día? / ¿Sigue activo?)
+  if (containsKeyword(question, "vivo") || containsKeyword(question, "activo") || containsKeyword(question, "vigente") || containsKeyword(question, "fallecido") || containsKeyword(question, "muerto") || containsKeyword(question, "hoy en dia")) {
+    const isAliveOrActive = (attrs.vivo === true || activeCharacter.deathYear === null || attrs.activo === true || attrs.vigente === true) && attrs.muerto !== true;
+    if (containsKeyword(question, "fallecido") || containsKeyword(question, "muerto")) {
+      return !isAliveOrActive ? { text: "SÍ", type: 'yes' } : { text: "NO", type: 'no' };
+    }
+    return isAliveOrActive ? { text: "SÍ", type: 'yes' } : { text: "NO", type: 'no' };
   }
-  if (containsKeyword(question, "muerto") || containsKeyword(question, "fallecido") || containsKeyword(question, "murio") || containsKeyword(question, "ya no vive") || containsKeyword(question, "difunto") || containsKeyword(question, "tumba")) {
-    return attrs.muerto ? { text: "SÍ", type: 'yes' } : { text: "NO", type: 'no' };
+
+  // 3. Género Femenino / Masculino
+  if (containsKeyword(question, "femenino") || containsKeyword(question, "mujer") || containsKeyword(question, "femenina") || containsKeyword(question, "chica") || containsKeyword(question, "dama") || containsKeyword(question, "hombre") || containsKeyword(question, "masculino") || containsKeyword(question, "varon")) {
+    const isFemale = attrs.mujer === true || attrs.femenino === true;
+    if (containsKeyword(question, "hombre") || containsKeyword(question, "masculino") || containsKeyword(question, "varon")) {
+      return !isFemale ? { text: "SÍ", type: 'yes' } : { text: "NO", type: 'no' };
+    }
+    return isFemale ? { text: "SÍ", type: 'yes' } : { text: "NO", type: 'no' };
   }
-  
-  // Realidad / Ficción
-  if (containsKeyword(question, "real") || containsKeyword(question, "existio") || containsKeyword(question, "existe") || containsKeyword(question, "vida real") || containsKeyword(question, "carne y hueso")) {
-    return attrs.real ? { text: "SÍ", type: 'yes' } : { text: "NO", type: 'no' };
+
+  // 4. ¿Es un ser humano?
+  if (containsKeyword(question, "humano") || containsKeyword(question, "persona") || containsKeyword(question, "ser humano") || containsKeyword(question, "animal") || containsKeyword(question, "alien") || containsKeyword(question, "criatura") || containsKeyword(question, "robot")) {
+    const isHuman = attrs.humano !== false && !attrs.animal && !attrs.alien && !attrs.robot && !attrs.criatura;
+    if (containsKeyword(question, "animal") || containsKeyword(question, "alien") || containsKeyword(question, "criatura") || containsKeyword(question, "robot")) {
+      return !isHuman ? { text: "SÍ", type: 'yes' } : { text: "NO", type: 'no' };
+    }
+    return isHuman ? { text: "SÍ", type: 'yes' } : { text: "NO", type: 'no' };
   }
-  if (containsKeyword(question, "ficticio") || containsKeyword(question, "inventado") || containsKeyword(question, "dibujo") || containsKeyword(question, "caricatura") || containsKeyword(question, "anime") || containsKeyword(question, "libro") || containsKeyword(question, "pelicula") || containsKeyword(question, "personaje de") || containsKeyword(question, "falso")) {
-    return attrs.ficticio ? { text: "SÍ", type: 'yes' } : { text: "NO", type: 'no' };
+
+  // 5. ¿Es de origen o creación estadounidense?
+  if (containsKeyword(question, "estadounidense") || containsKeyword(question, "norteamericano") || containsKeyword(question, "estados unidos") || containsKeyword(question, "eeuu") || containsKeyword(question, "usa") || containsKeyword(question, "gringo")) {
+    const isUS = activeCharacter.country === "Estados Unidos" || (activeCharacter.filters && activeCharacter.filters.region === "usa") || attrs.estadounidense === true || attrs.usa === true;
+    return isUS ? { text: "SÍ", type: 'yes' } : { text: "NO", type: 'no' };
   }
-  
+
+  // 6. ¿Se le conoce principalmente por entretenimiento, arte o deporte?
+  if (containsKeyword(question, "entretenimiento") || containsKeyword(question, "arte") || containsKeyword(question, "deporte") || containsKeyword(question, "espectaculo") || containsKeyword(question, "deportista") || containsKeyword(question, "artista")) {
+    const area = activeCharacter.filters ? activeCharacter.filters.area : '';
+    const isEntertainmentOrSports = area === 'sports' || area === 'music' || area === 'fiction' || attrs.deportista || attrs.artista || attrs.actor || attrs.actriz || attrs.cantante || attrs.musico || attrs.entretenimiento;
+    return isEntertainmentOrSports ? { text: "SÍ", type: 'yes' } : { text: "NO", type: 'no' };
+  }
+
+  // 7. ¿Es el/la protagonista de su obra o historia?
+  if (containsKeyword(question, "protagonista") || containsKeyword(question, "personaje principal") || containsKeyword(question, "figura principal") || containsKeyword(question, "prota")) {
+    const isProtagonist = attrs.protagonista !== false && attrs.villano !== true && attrs.antagonista !== true;
+    return isProtagonist ? { text: "SÍ", type: 'yes' } : { text: "NO", type: 'no' };
+  }
+
+  // 8. ¿Es un villano, antagonista o figura antagónica?
+  if (containsKeyword(question, "villano") || containsKeyword(question, "antagonista") || containsKeyword(question, "malo") || containsKeyword(question, "enemigo") || containsKeyword(question, "malvado")) {
+    const isVillain = attrs.villano === true || attrs.antagonista === true || attrs.malo === true;
+    return isVillain ? { text: "SÍ", type: 'yes' } : { text: "NO", type: 'no' };
+  }
+
+  // 9. ¿Su origen o contexto histórico es anterior al año 1900?
+  if (containsKeyword(question, "1900") || containsKeyword(question, "siglo xix") || containsKeyword(question, "siglo 19") || containsKeyword(question, "anterior al año 1900") || containsKeyword(question, "siglo xviii") || containsKeyword(question, "antiguo")) {
+    const isBefore1900 = (activeCharacter.birthYear && activeCharacter.birthYear < 1900) || (activeCharacter.filters && activeCharacter.filters.era === 'historical') || attrs.anterior_1900 === true;
+    return isBefore1900 ? { text: "SÍ", type: 'yes' } : { text: "NO", type: 'no' };
+  }
+
+  // 10. ¿Está dirigido principalmente a un público infantil?
+  if (containsKeyword(question, "infantil") || containsKeyword(question, "ninos") || containsKeyword(question, "ninas") || containsKeyword(question, "niños") || containsKeyword(question, "niñas") || containsKeyword(question, "público infantil") || containsKeyword(question, "caricatura") || containsKeyword(question, "dibujo animado")) {
+    const isKids = attrs.infantil === true || attrs.dibujo === true || attrs.animado === true;
+    return isKids ? { text: "SÍ", type: 'yes' } : { text: "NO", type: 'no' };
+  }
+
+  // 11. ¿Proviene originalmente del cine o la televisión?
+  if (containsKeyword(question, "cine") || containsKeyword(question, "television") || containsKeyword(question, "tv") || containsKeyword(question, "pelicula") || containsKeyword(question, "serie") || containsKeyword(question, "pantalla grande")) {
+    const isCinemaTV = attrs.cine_tv === true || attrs.origen_cine === true || attrs.origen_tv === true || attrs.actor === true || attrs.actriz === true;
+    return isCinemaTV ? { text: "SÍ", type: 'yes' } : { text: "NO", type: 'no' };
+  }
+
+  // 12. ¿Tiene superpoderes, magia o habilidades sobrehumanas?
+  if (containsKeyword(question, "superpoderes") || containsKeyword(question, "poderes") || containsKeyword(question, "magia") || containsKeyword(question, "sobrehumano") || containsKeyword(question, "sobrenatural") || containsKeyword(question, "habilidades sobrehumanas")) {
+    const hasPowers = attrs.superpoderes === true || attrs.magia === true || attrs.mago === true || attrs.superheroe === true || attrs.sobrehumano === true;
+    return hasPowers ? { text: "SÍ", type: 'yes' } : { text: "NO", type: 'no' };
+  }
+
+  // 13. ¿Lleva algún uniforme, traje especial, máscara o accesorio icónico?
+  if (containsKeyword(question, "uniforme") || containsKeyword(question, "traje especial") || containsKeyword(question, "mascara") || containsKeyword(question, "casco") || containsKeyword(question, "accesorio") || containsKeyword(question, "disfraz") || containsKeyword(question, "capa")) {
+    const hasIconicOutfit = attrs.uniforme === true || attrs.mascara === true || attrs.casco === true || attrs.traje_especial === true || attrs.capa === true || attrs.lentes === true || attrs.anteojos === true;
+    return hasIconicOutfit ? { text: "SÍ", type: 'yes' } : { text: "NO", type: 'no' };
+  }
+
+  // 14. ¿Lleva armas o herramientas de combate de forma habitual?
+  if (containsKeyword(question, "armas") || containsKeyword(question, "arma") || containsKeyword(question, "herramientas de combate") || containsKeyword(question, "espada") || containsKeyword(question, "pistola") || containsKeyword(question, "escudo") || containsKeyword(question, "combate")) {
+    const hasWeapons = attrs.armas === true || attrs.espada === true || attrs.pistola === true || attrs.espada_laser === true || attrs.escudo === true;
+    return hasWeapons ? { text: "SÍ", type: 'yes' } : { text: "NO", type: 'no' };
+  }
+
+  // 15. ¿Forma parte de un grupo, equipo o franquicia de más de 3 integrantes?
+  if (containsKeyword(question, "grupo") || containsKeyword(question, "equipo") || containsKeyword(question, "franquicia") || containsKeyword(question, "mas de 3") || containsKeyword(question, "mas de tres") || containsKeyword(question, "integrantes") || containsKeyword(question, "vengadores") || containsKeyword(question, "banda")) {
+    const isTeam = attrs.equipo === true || attrs.grupo === true || attrs.franquicia === true || attrs.banda === true;
+    return isTeam ? { text: "SÍ", type: 'yes' } : { text: "NO", type: 'no' };
+  }
+
+  // 16. ¿Tiene algún rasgo físico visible no humano?
+  if (containsKeyword(question, "rasgo fisico no humano") || containsKeyword(question, "piel de otro color") || containsKeyword(question, "orejas puntiagudas") || containsKeyword(question, "pelo de color extravagante") || containsKeyword(question, "rasgo visible no humano") || containsKeyword(question, "rasgo no humano")) {
+    const hasNonHumanTrait = attrs.rasgo_no_humano === true || attrs.piel_color === true || attrs.orejas_puntiagudas === true || attrs.pelo_extravagante === true;
+    return hasNonHumanTrait ? { text: "SÍ", type: 'yes' } : { text: "NO", type: 'no' };
+  }
+
   // --- DETECCIÓN DINÁMICA DE PAÍSES Y GENTILICIOS ---
   let countryMatchDetected = false;
   let matchesActiveCharacter = false;
@@ -782,7 +885,7 @@ function evaluateQuestionSemantics(question) {
       for (let demonym of char.demonyms) {
         if (containsKeyword(question, demonym)) {
           countryMatchDetected = true;
-          if (activeCharacter.demonyms.some(d => phonetize(d) === phonetize(demonym)) || activeCharacter.country === char.country) {
+          if (activeCharacter.demonyms && activeCharacter.demonyms.some(d => phonetize(d) === phonetize(demonym)) || activeCharacter.country === char.country) {
             matchesActiveCharacter = true;
           }
         }
@@ -801,7 +904,7 @@ function evaluateQuestionSemantics(question) {
     for (let demonym of COMMON_COUNTRIES_LOOKUP[country]) {
       if (containsKeyword(question, demonym)) {
         countryMatchDetected = true;
-        if (activeCharacter.demonyms.some(d => phonetize(d) === phonetize(demonym)) || phonetize(activeCharacter.country) === phonetize(country)) {
+        if (activeCharacter.demonyms && activeCharacter.demonyms.some(d => phonetize(d) === phonetize(demonym)) || phonetize(activeCharacter.country) === phonetize(country)) {
           matchesActiveCharacter = true;
         }
       }
@@ -1158,18 +1261,24 @@ document.getElementById('btn-play-again').addEventListener('click', () => {
 });
 
 // LÓGICA DE INVITACIÓN Y CÓDIGO DE SALA (MODO REMOTO)
-function generateRoomCode() {
+function generateRoomCode(forceNew = false) {
+  // Generar código de sala único de 4 dígitos (si se fuerza o es primera vez)
   let savedCode = localStorage.getItem('adivinador_host_room_code');
-  if (savedCode && savedCode.length === 4 && /^\d+$/.test(savedCode)) {
+  if (!forceNew && savedCode && savedCode.length === 4 && /^\d+$/.test(savedCode)) {
     roomCode = savedCode;
   } else {
     roomCode = Math.floor(1000 + Math.random() * 9000).toString();
     localStorage.setItem('adivinador_host_room_code', roomCode);
   }
-  roomCodeDisplay.querySelector('span').textContent = roomCode;
-  roomCodeDisplay.style.display = 'inline-flex';
-  btnShareInvite.style.display = 'inline-flex';
-  btnSyncTv.style.display = 'inline-flex';
+  
+  if (roomCodeDisplay && roomCodeDisplay.querySelector('span')) {
+    roomCodeDisplay.querySelector('span').textContent = roomCode;
+    roomCodeDisplay.style.display = 'inline-flex';
+    roomCodeDisplay.style.cursor = 'pointer';
+    roomCodeDisplay.title = 'Clic para cambiar de sala';
+  }
+  if (btnShareInvite) btnShareInvite.style.display = 'inline-flex';
+  if (btnSyncTv) btnSyncTv.style.display = 'inline-flex';
 
   const roomControlPanel = document.getElementById('room-control-panel');
   if (roomControlPanel) {
@@ -1179,6 +1288,21 @@ function generateRoomCode() {
   // Escuchar mensajes entrantes en la sala
   listenToRoom();
 }
+
+if (roomCodeDisplay) {
+  roomCodeDisplay.addEventListener('click', () => {
+    generateRoomCode(true);
+    syncWithTV();
+    showToast(`¡Nueva sala generada: Código ${roomCode}!`);
+  });
+}
+
+btnSyncTv.addEventListener('click', () => {
+  syncWithTV();
+  sendMusicStateToTV();
+  sendChatControlStateToTV();
+  showToast('¡Pantalla sincronizada con la TV!');
+});
 
 function getSpectatorURL() {
   const loc = window.location;

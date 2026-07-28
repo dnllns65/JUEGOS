@@ -56,6 +56,7 @@ const charDescDisplay = document.getElementById('char-desc-display');
 // ==========================================================================
 let presentationRequest = null;
 
+
 if (navigator.presentation) {
   // Configurar el archivo receptor
   presentationRequest = new PresentationRequest(['receiver.html']);
@@ -65,19 +66,18 @@ if (navigator.presentation) {
   presentationRequest.getAvailability()
     .then(availability => {
       console.log('Disponibilidad de pantallas:', availability.value);
-      btnCast.style.display = availability.value ? 'flex' : 'none';
+      btnCast.style.display = 'flex'; // Siempre visible como fallback
       availability.onchange = () => {
-        btnCast.style.display = availability.value ? 'flex' : 'none';
+        btnCast.style.display = 'flex';
       };
     })
     .catch(err => {
       console.warn('Presentation API - Error al chequear disponibilidad:', err);
-      // Mantener el botón visible como fallback por si acaso
       btnCast.style.display = 'flex';
     });
 } else {
   console.log('Presentation API no soportada por este navegador.');
-  btnCast.style.display = 'none';
+  btnCast.style.display = 'flex'; // Siempre visible para móvil
 }
 
 // Conectar / Desconectar Proyección
@@ -93,8 +93,12 @@ btnCast.addEventListener('click', () => {
           setupPresentationConnection(connection);
         })
         .catch(err => {
-          console.error('Error al iniciar transmisión:', err);
+          console.error('Error al iniciar transmisión, abriendo en pestaña nueva:', err);
+          window.open(getSpectatorURL(), '_blank');
         });
+    } else {
+      // Fallback para celulares/móviles: abrir el enlace de la TV en una pestaña nueva
+      window.open(getSpectatorURL(), '_blank');
     }
   }
 });
@@ -237,6 +241,11 @@ document.querySelectorAll('.filter-options button').forEach(button => {
       parent.querySelectorAll('button').forEach(btn => btn.classList.remove('selected'));
       button.classList.add('selected');
       gameMode = button.dataset.mode;
+      
+      const humanHostContainer = document.getElementById('human-host-container');
+      if (humanHostContainer) {
+        humanHostContainer.style.display = gameMode === 'manual' ? 'flex' : 'none';
+      }
       return;
     }
     
@@ -248,25 +257,136 @@ document.querySelectorAll('.filter-options button').forEach(button => {
   });
 });
 
-// (Se eliminó la lógica de Spotify para usar audio local de fondo)
+
+// Función para consultar información de personajes en Internet (Wikipedia REST API)
+async function searchInternetCharacter(charName) {
+  try {
+    const searchUrl = `https://es.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(charName)}&format=json&origin=*`;
+    const res = await fetch(searchUrl);
+    const data = await res.json();
+    const results = data.query && data.query.search;
+    
+    if (!results || results.length === 0) {
+      return null;
+    }
+    
+    const wikiTitle = results[0].title;
+    const summaryUrl = `https://es.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(wikiTitle)}`;
+    const sumRes = await fetch(summaryUrl);
+    const sumData = await sumRes.json();
+    
+    if (sumData && sumData.extract) {
+      const desc = sumData.extract;
+      const textLower = (wikiTitle + ' ' + desc).toLowerCase();
+      
+      const inferredFilters = {
+        region: currentFilters.region !== 'random' ? currentFilters.region : 'latam',
+        area: currentFilters.area !== 'random' ? currentFilters.area : 'sports',
+        nature: 'real',
+        era: 'current'
+      };
+      
+      if (textLower.includes('futbolista') || textLower.includes('deporte') || textLower.includes('baloncesto') || textLower.includes('tenista') || textLower.includes('jugador')) {
+        inferredFilters.area = 'sports';
+      } else if (textLower.includes('cantante') || textLower.includes('actor') || textLower.includes('actriz') || textLower.includes('música') || textLower.includes('cine')) {
+        inferredFilters.area = 'music';
+      } else if (textLower.includes('ficticio') || textLower.includes('anime') || textLower.includes('manga') || textLower.includes('cómic') || textLower.includes('serie')) {
+        inferredFilters.nature = 'fictional';
+        inferredFilters.area = 'fiction';
+      } else if (textLower.includes('político') || textLower.includes('presidente') || textLower.includes('historia')) {
+        inferredFilters.area = 'history';
+      }
+      
+      if (textLower.includes('españa') || textLower.includes('francia') || textLower.includes('italia') || textLower.includes('alemania') || textLower.includes('europa')) {
+        inferredFilters.region = 'europa';
+      } else if (textLower.includes('argentin') || textLower.includes('brasil') || textLower.includes('chile') || textLower.includes('méxico') || textLower.includes('colombia')) {
+        inferredFilters.region = 'latam';
+      }
+
+      return {
+        name: wikiTitle,
+        description: desc,
+        synonyms: [charName, wikiTitle],
+        filters: inferredFilters
+      };
+    }
+  } catch (err) {
+    console.error('Error buscando información en Internet (Wikipedia):', err);
+  }
+  return null;
+}
 
 
 // ==========================================================================
 // 3. SIMULACIÓN DE BÚSQUEDA Y SELECCIÓN DE PERSONAJE
 // ==========================================================================
-document.getElementById('btn-run-search').addEventListener('click', () => {
+document.getElementById('btn-run-search').addEventListener('click', async () => {
+  const humanCharNameInput = document.getElementById('human-character-name');
+  const humanManualDetails = document.getElementById('human-manual-details');
+  const humanCharDescInput = document.getElementById('human-character-desc');
+  
+  if (gameMode === 'manual') {
+    const charName = humanCharNameInput ? humanCharNameInput.value.trim() : '';
+    if (!charName) {
+      showToast('Por favor ingresa el nombre del personaje.');
+      if (humanCharNameInput) humanCharNameInput.focus();
+      return;
+    }
+    
+    // 1. Buscar en la base de datos local
+    let found = CHARACTERS.find(c => 
+      c.name.toLowerCase() === charName.toLowerCase() || 
+      c.name.toLowerCase().includes(charName.toLowerCase())
+    );
+    
+    // 2. Si no está en la base local, buscar en Internet (Wikipedia API)
+    if (!found) {
+      showToast('Buscando información en Internet (Wikipedia)...');
+      found = await searchInternetCharacter(charName);
+    }
+    
+    if (found) {
+      if (humanManualDetails) humanManualDetails.style.display = 'none';
+      activeCharacter = {
+        name: found.name,
+        description: found.description,
+        synonyms: found.synonyms || [charName, found.name],
+        filters: found.filters || currentFilters
+      };
+      showToast(`¡Datos de '${found.name}' obtenidos con éxito de Internet!`);
+    } else {
+      // 3. Si tampoco se encuentra en Internet
+      const manualDesc = humanCharDescInput ? humanCharDescInput.value.trim() : '';
+      if (!manualDesc) {
+        if (humanManualDetails) humanManualDetails.style.display = 'flex';
+        showToast('Datos no encontrados de este personaje; ingrese manual los datos');
+        if (humanCharDescInput) humanCharDescInput.focus();
+        return;
+      }
+      
+      // Si el humano completó la descripción manual
+      activeCharacter = {
+        name: charName,
+        description: manualDesc,
+        synonyms: [charName],
+        filters: currentFilters
+      };
+    }
+  }
+
   changeScreen('searching');
   
   // Limpiar logs
   searchLogs.innerHTML = '';
   
+  const searchTargetName = (gameMode === 'manual' && activeCharacter) ? activeCharacter.name : 'Personaje Misterioso';
   const logs = [
-    "Inicializando rastreador de personajes...",
-    "Crawleando Wikipedia y bases de datos públicas...",
+    `Inicializando rastreador de datos para: ${searchTargetName}...`,
+    "Crawleando Wikipedia, Wikidata y bases de datos públicas...",
     `Filtrando por parámetros: Región [${currentFilters.region}], Profesión [${currentFilters.area}]...`,
     "Analizando popularidad y volumen de búsquedas...",
     "Cruzando referencias históricas y ficticias...",
-    "¡Personaje seleccionado con éxito!"
+    "¡Datos procesados y personaje cargado con éxito!"
   ];
   
   let currentLogIdx = 0;
@@ -286,8 +406,10 @@ document.getElementById('btn-run-search').addEventListener('click', () => {
       currentLogIdx++;
     } else {
       clearInterval(interval);
-      // Seleccionar el personaje final
-      selectCharacter();
+      // Seleccionar personaje aleatorio sólo en modo IA
+      if (gameMode === 'ai' || !activeCharacter) {
+        selectCharacter();
+      }
       setTimeout(() => {
         startGame();
       }, 1000);
@@ -376,6 +498,23 @@ blurOverlay.addEventListener('click', () => {
 function addChatMessage(sender, text, type = '') {
   chatHistory.push({ sender, text, type });
   
+  // Si es una pregunta oficial del jugador (sender === 'player'), buscar si ya existe en la caja de chat una burbuja del invitado con ese texto para actualizarla sin duplicar
+  if (sender === 'player' && chatQuestionsContainer) {
+    const existingBubbles = chatQuestionsContainer.querySelectorAll('.chat-bubble');
+    for (let b of existingBubbles) {
+      if (b.textContent.includes(text)) {
+        b.className = `chat-bubble player ${type}`;
+        const meta = b.querySelector('.chat-meta');
+        if (meta) {
+          meta.textContent = `Pregunta #${questionCount}:`;
+        }
+        chatQuestionsContainer.scrollTop = chatQuestionsContainer.scrollHeight;
+        sendToTV('add-chat-bubble', { sender, text, type, questionCount });
+        return;
+      }
+    }
+  }
+
   const bubble = document.createElement('div');
   bubble.className = `chat-bubble ${sender} ${type}`;
   
@@ -393,9 +532,11 @@ function addChatMessage(sender, text, type = '') {
   
   bubble.appendChild(meta);
   bubble.appendChild(content);
-  chatContainer.appendChild(bubble);
   
-  chatContainer.scrollTop = chatContainer.scrollHeight;
+  if (chatQuestionsContainer) {
+    chatQuestionsContainer.appendChild(bubble);
+    chatQuestionsContainer.scrollTop = chatQuestionsContainer.scrollHeight;
+  }
   
   // Sincronizar chat e historial con la TV
   sendToTV('add-chat-bubble', { sender, text, type, questionCount });
@@ -834,6 +975,114 @@ btnGetClue.addEventListener('click', () => {
 });
 
 
+// Levenshtein distance para tolerancia a errores tipográficos / de imprenta
+function levenshteinDistance(a, b) {
+  if (a.length === 0) return b.length;
+  if (b.length === 0) return a.length;
+  const matrix = [];
+
+  for (let i = 0; i <= b.length; i++) {
+    matrix[i] = [i];
+  }
+  for (let j = 0; j <= a.length; j++) {
+    matrix[0][j] = j;
+  }
+
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1,
+          Math.min(
+            matrix[i][j - 1] + 1,
+            matrix[i - 1][j] + 1
+          )
+        );
+      }
+    }
+  }
+  return matrix[b.length][a.length];
+}
+
+// Calcular porcentaje de similitud entre dos cadenas (0.0 a 1.0)
+function stringSimilarity(str1, str2) {
+  const s1 = phonetize(str1);
+  const s2 = phonetize(str2);
+  if (s1 === s2) return 1.0;
+  if (!s1 || !s2) return 0.0;
+  
+  const maxLen = Math.max(s1.length, s2.length);
+  if (maxLen === 0) return 1.0;
+  
+  const dist = levenshteinDistance(s1, s2);
+  return 1.0 - (dist / maxLen);
+}
+
+function checkGuessMatch(userGuess, activeChar) {
+  if (!userGuess || !activeChar || !activeChar.name) return false;
+
+  const cleanGuess = phonetize(userGuess);
+  if (!cleanGuess) return false;
+
+  // Recopilar posibles nombres / apodos / sinónimos válidos del personaje
+  const targets = [];
+  if (activeChar.name) targets.push(activeChar.name);
+  if (activeChar.synonyms && Array.isArray(activeChar.synonyms)) {
+    targets.push(...activeChar.synonyms);
+  }
+
+  const ignoreWords = ['de', 'del', 'la', 'las', 'los', 'van', 'von', 'el', 'da', 'di'];
+
+  for (let targetName of targets) {
+    if (!targetName) continue;
+
+    const targetWords = targetName.split(/\s+/).filter(w => w.length > 0 && !ignoreWords.includes(w.toLowerCase()));
+    const guessWords = userGuess.split(/\s+/).filter(w => w.length > 0 && !ignoreWords.includes(w.toLowerCase()));
+
+    // CASO A: Personaje con Nombre y Apellido (2 o más palabras principales)
+    if (targetWords.length >= 2) {
+      const firstName = targetWords[0];
+      const lastName = targetWords[targetWords.length - 1];
+
+      // Coincide al menos un Nombre y un Apellido (>= 70% de similitud o prefijo)
+      const matchedFirstName = guessWords.some(gw => stringSimilarity(gw, firstName) >= 0.70 || phonetize(firstName).startsWith(phonetize(gw)));
+      const matchedLastName = guessWords.some(gw => stringSimilarity(gw, lastName) >= 0.70 || phonetize(lastName).startsWith(phonetize(gw)));
+
+      if (matchedFirstName && matchedLastName) {
+        return true;
+      }
+
+      // Coincidencia de nombre completo >= 75%
+      if (stringSimilarity(userGuess, targetName) >= 0.75) {
+        return true;
+      }
+      
+      // Coincidencia del apellido principal >= 75%
+      if (guessWords.some(gw => stringSimilarity(gw, lastName) >= 0.75)) {
+        return true;
+      }
+    } 
+    // CASO B: Personaje con Un solo Nombre (ej: Goku, Pelé, Neymar, Madonna)
+    else if (targetWords.length === 1) {
+      const singleTarget = targetWords[0];
+      
+      // Coincidencia si la similitud global es >= 75% (0.75)
+      if (stringSimilarity(userGuess, singleTarget) >= 0.75) {
+        return true;
+      }
+      
+      // Coincidencia si alguna palabra ingresada por el usuario es >= 75%
+      if (guessWords.some(gw => stringSimilarity(gw, singleTarget) >= 0.75)) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
 // ==========================================================================
 // 7. ARRIESGAR / GANAR / PERDER
 // ==========================================================================
@@ -841,11 +1090,7 @@ document.getElementById('btn-guess-prompt').addEventListener('click', () => {
   const guess = prompt("¿Quién crees que es el personaje secreto?");
   if (guess === null) return; // Cancelado
   
-  const cleanGuess = phonetize(guess);
-  if (!cleanGuess) return;
-  
-  // Verificar si coincide con el nombre o los sinónimos con tolerancia ortográfica
-  const isCorrect = activeCharacter.synonyms.some(synonym => phonetize(synonym) === cleanGuess);
+  const isCorrect = checkGuessMatch(guess, activeCharacter);
   
   if (isCorrect) {
     endGame(true);

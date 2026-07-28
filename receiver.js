@@ -47,6 +47,22 @@ function addTVChatBubble(sender, text, type = '', questionCount = 0, channel = '
     container.innerHTML = '';
   }
 
+  // Si es la formulación de una pregunta oficial (sender === 'player'), verificar si ya existe una burbuja del invitado con ese texto para actualizarla sin duplicar
+  if (sender === 'player' && channel === 'questions') {
+    const existingBubbles = container.querySelectorAll('.chat-bubble');
+    for (let b of existingBubbles) {
+      if (b.textContent.includes(text)) {
+        b.className = `chat-bubble tv-chat-bubble player ${type}`;
+        const meta = b.querySelector('.chat-meta');
+        if (meta) {
+          meta.textContent = `Pregunta #${questionCount}:`;
+        }
+        container.scrollTop = container.scrollHeight;
+        return;
+      }
+    }
+  }
+
   const bubble = document.createElement('div');
   bubble.className = `chat-bubble tv-chat-bubble ${sender} ${type}`;
 
@@ -251,6 +267,9 @@ function handleTVMessage(action, data) {
 // Escuchar actualizaciones vía LocalStorage (para pruebas locales en la misma computadora en pestañas distintas)
 window.addEventListener('storage', (event) => {
   if (event.key === 'adivinador_tv_sync' && event.newValue) {
+    // Si ya estamos conectados a una sala remota vía SSE, ignorar LocalStorage para evitar duplicados
+    if (currentRoomCode) return;
+
     try {
       const payload = JSON.parse(event.newValue);
       console.log('Mensaje LocalStorage recibido:', payload.action, payload.data);

@@ -4,7 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AdivinaQuién AI - TV Screen</title>
-  <link rel="stylesheet" href="style.css?v=11">
+  <link rel="icon" type="image/png" href="icon.png">
+  <link rel="apple-touch-icon" href="icon.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#8b5cf6">
+  <link rel="stylesheet" href="style.css?v=17">
   <!-- FontAwesome para iconos -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
@@ -156,13 +160,13 @@
         </div>
 
         <!-- Vista 3: Juego en Curso (Stats) -->
-        <div id="tv-view-gameplay" class="tv-game-status" style="display: none;">
-          <h2 style="font-size: 2rem; margin-bottom: 10px;">Preguntas Realizadas</h2>
-          <div id="tv-questions-val" class="tv-question-counter">0 / 20</div>
+        <div id="tv-view-gameplay" class="tv-game-status" style="display: none; flex-direction: column; align-items: center; text-align: center;">
+          <h2 style="font-size: 1.3rem; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">Preguntas Realizadas</h2>
+          <div id="tv-questions-val" class="tv-question-counter" style="font-size: 3.5rem; line-height: 1.1; margin-bottom: 15px;">0 / 20</div>
           
-          <div class="glass-card" style="margin-top: 30px; width: 350px; padding: 15px; text-align: left;">
-            <span class="filter-label">Filtros Seleccionados</span>
-            <div id="tv-active-filters" style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px; font-size: 1rem;">
+          <div class="glass-card" style="margin-top: 10px; width: 100%; max-width: 320px; padding: 15px; text-align: left;">
+            <span class="filter-label" style="font-size: 0.85rem;">Filtros Seleccionados</span>
+            <div id="tv-active-filters" style="display: flex; flex-direction: column; gap: 6px; margin-top: 8px; font-size: 0.95rem;">
               <!-- Filtros en texto -->
             </div>
           </div>
@@ -234,6 +238,6 @@
   </div>
 
   <!-- Lógica de la TV -->
-  <script src="receiver.js?v=14"></script>
+  <script src="receiver.js?v=22"></script>
 </body>
 </html>

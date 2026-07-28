@@ -3,8 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AdivinaQuién AI - Anfitrión</title>
-  <link rel="stylesheet" href="style.css">
+  <title>AdivinaQuién AI - Controlador Anfitrión</title>
+  <link rel="icon" type="image/png" href="icon.png">
+  <link rel="apple-touch-icon" href="icon.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#8b5cf6">
+  <link rel="stylesheet" href="style.css?v=17">
   <!-- FontAwesome para iconos -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
@@ -14,7 +18,7 @@
     
     <header style="flex-wrap: wrap; gap: 10px;">
       <div class="logo">
-        <i class="fa-solid fa-brain"></i> AdivinaQuién <span>AI</span>
+        <i class="fa-solid fa-crown"></i> AdivinaQuién <span>AI</span>
       </div>
       <div style="display: flex; gap: 8px;">
         <span id="room-code-display" class="btn-cast" style="background: rgba(139, 92, 246, 0.1); border-color: var(--primary); color: var(--primary); cursor: default; display: none;">
@@ -23,11 +27,11 @@
         <button id="btn-share-invite" class="btn-cast" title="Enviar invitación a amigos" style="display: none; background: rgba(16, 185, 129, 0.1); border-color: var(--accent); color: var(--accent);">
           <i class="fa-solid fa-share-nodes"></i> Invitar
         </button>
-        <button id="btn-sync-tv" class="btn-cast" title="Sincronizar pantallas" style="display: none; background: rgba(59, 130, 246, 0.1); border-color: #3b82f6; color: #3b82f6;">
-          <i class="fa-solid fa-rotate"></i> Sincronizar
+        <button id="btn-sync-tv" class="btn-cast" title="Sincronizar pantallas" style="display: none; background: rgba(59, 130, 246, 0.1); border-color: #3b82f6; color: #3b82f6; padding: 6px 10px; margin: 0; min-width: auto; display: inline-flex; align-items: center; justify-content: center;">
+          <i class="fa-solid fa-rotate"></i>
         </button>
-        <button id="btn-cast" class="btn-cast" title="Transmitir a la pantalla de TV">
-          <i class="fa-solid fa-tv"></i> Transmitir
+        <button id="btn-cast" class="btn-cast" title="Transmitir a Smart TV" style="padding: 6px 10px; margin: 0; min-width: auto; display: inline-flex; align-items: center; justify-content: center;">
+          <i class="fa-solid fa-tv" style="font-size: 1.1rem;"></i>
         </button>
       </div>
     </header>
@@ -88,9 +92,9 @@
     <section id="screen-home" class="screen active">
       <div class="home-graphic">
         <div class="graphic-icon">
-          <i class="fa-solid fa-mask"></i>
+          <i class="fa-solid fa-crown"></i>
         </div>
-        <h2>El Celular es el Anfitrión</h2>
+        <h2>Anfitrión</h2>
         <p class="subtitle">La IA seleccionará un personaje misterioso basándose en tus filtros. Los demás jugadores deben adivinarlo haciendo preguntas de SÍ o NO.</p>
       </div>
       
@@ -162,6 +166,21 @@
           <button class="filter-btn" id="mode-manual" data-mode="manual">
             <i class="fa-solid fa-user-tie"></i> Anfitrión Humano
           </button>
+        </div>
+      </div>
+
+      <!-- Input para Anfitrión Humano (Nombre del Personaje) -->
+      <div id="human-host-container" style="display: none; margin-bottom: 20px; flex-direction: column; gap: 10px; background: rgba(139, 92, 246, 0.08); padding: 15px; border-radius: 10px; border: 1px solid var(--primary);">
+        <span class="filter-label" style="color: var(--primary); margin-bottom: 0;"><i class="fa-solid fa-user-pen"></i> Personaje Elegido por el Humano</span>
+        <input type="text" id="human-character-name" class="input-field" placeholder="Nombre del personaje (ej: Goku, Napoleón...)" style="font-size: 1rem; padding: 10px; background: rgba(0,0,0,0.4); border: 1px solid var(--bg-card-border); color: var(--text-main); border-radius: 8px; outline: none;">
+        
+        <!-- Sección de Datos Manuales (Se activa si no se encuentran datos en la búsqueda) -->
+        <div id="human-manual-details" style="display: none; flex-direction: column; gap: 10px; margin-top: 5px;">
+          <div style="background: rgba(239, 68, 68, 0.15); border: 1px solid var(--danger); color: #fca5a5; padding: 10px; border-radius: 6px; font-size: 0.85rem; font-weight: bold;">
+            <i class="fa-solid fa-triangle-exclamation"></i> Datos no encontrados de este personaje; ingrese manual los datos
+          </div>
+          <input type="text" id="human-character-desc" class="input-field" placeholder="Escribe una breve descripción del personaje..." style="font-size: 0.95rem; padding: 10px; background: rgba(0,0,0,0.4); border: 1px solid var(--bg-card-border); color: var(--text-main); border-radius: 8px; outline: none;">
+        </div>
       </div>
 
       <div class="filter-group" style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); padding: 12px; border-radius: 8px; border: 1px solid var(--bg-card-border);">
@@ -314,7 +333,7 @@
   </div>
 
   <!-- Carga de Base de Datos y Lógica principal -->
-  <script src="database.js?v=14"></script>
-  <script src="app.js?v=14"></script>
+  <script src="database.js?v=22"></script>
+  <script src="app.js?v=22"></script>
 </body>
 </html>

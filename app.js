@@ -65,7 +65,6 @@ if (navigator.presentation) {
   // Escuchar si hay pantallas disponibles
   presentationRequest.getAvailability()
     .then(availability => {
-      console.log('Disponibilidad de pantallas:', availability.value);
       btnCast.style.display = 'flex'; // Siempre visible como fallback
       availability.onchange = () => {
         btnCast.style.display = 'flex';

@@ -110,6 +110,9 @@ btnCast.addEventListener('click', () => {
 });
 
 function triggerChromecastSearch() {
+  // 1. Cerrar el modal custom para dejar la pantalla despejada
+  closeCastModal();
+  
   if (presentationConnection) {
     try {
       presentationConnection.terminate();
@@ -122,24 +125,15 @@ function triggerChromecastSearch() {
       const freshRequest = new PresentationRequest(['receiver.html']);
       freshRequest.start()
         .then(connection => {
-          closeCastModal();
           setupPresentationConnection(connection);
         })
         .catch(err => {
-          console.log('Transmisión nativa no disponible:', err);
-          if (castOptionsModal) {
-            if (castTvUrlDisplay) castTvUrlDisplay.textContent = getSpectatorURL();
-            if (castQrContainer) castQrContainer.style.display = 'block';
-            castOptionsModal.style.display = 'flex';
-          }
-          showToast('Sin Chromecast nativo. Usa el código de sala o enlace.');
+          console.log('Diálogo nativo de Cast cancelado o cerrado:', err);
+          showToast('Selección de Cast cancelada.');
         });
     } catch (err) {
-      if (castOptionsModal) {
-        if (castTvUrlDisplay) castTvUrlDisplay.textContent = getSpectatorURL();
-        if (castQrContainer) castQrContainer.style.display = 'block';
-        castOptionsModal.style.display = 'flex';
-      }
+      console.warn('Presentation API error:', err);
+      showToast('Tu navegador no admite selección nativa de Cast.');
     }
   } else {
     window.open(getSpectatorURL(), '_blank');

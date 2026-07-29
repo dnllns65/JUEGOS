@@ -152,6 +152,10 @@ function handleTVMessage(action, data) {
 
     case 'chat-message':
       addSpectatorChatMessage(data.sender, data.text, data.type, data.channel);
+      if (data.type === 'maybe' || data.text === 'Cambia de pregunta') {
+        myQuestionsLeft = Math.min(20, myQuestionsLeft + 1);
+        updateMyQuestionsDisplay();
+      }
       break;
 
     case 'clue-revealed':
@@ -255,13 +259,18 @@ function handleTVMessage(action, data) {
         tvResultEmoji.textContent = "🏆";
         tvResultTitle.textContent = "¡Victoria!";
         tvResultTitle.style.color = "var(--accent)";
+        if (data.winner) {
+          tvResultCharDesc.innerHTML = `<strong style="color: var(--accent); font-size: 1.1rem;">🎉 ¡${data.winner} ha adivinado el personaje secreto con éxito!</strong><br><br>${data.description}`;
+        } else {
+          tvResultCharDesc.textContent = data.description;
+        }
       } else {
         tvResultEmoji.textContent = "💀";
         tvResultTitle.textContent = "Fin de la Partida";
         tvResultTitle.style.color = "var(--danger)";
+        tvResultCharDesc.textContent = data.description;
       }
       tvResultCharName.textContent = data.name;
-      tvResultCharDesc.textContent = data.description;
       break;
 
     default:

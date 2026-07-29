@@ -1,8 +1,8 @@
 // Lógica principal - Controlador del Celular (Anfitrión)
 
 window.onerror = function(message, source, lineno, colno, error) {
-  alert("ERROR DETECTADO:\n" + message + "\nLínea: " + lineno + "\nColumna: " + colno + "\nArchivo: " + source);
-  return false;
+  console.error("ERROR DETECTADO:", message, "Línea:", lineno, "Archivo:", source);
+  return true;
 };
 
 let activeCharacter = null;
@@ -674,11 +674,14 @@ function processAIQuestion() {
     const answer = evaluateQuestionSemantics(text);
     addChatMessage('host', answer.text, answer.type);
     
-    // Si no tiene suficiente información ('maybe'), la pregunta no se cuenta
+    // Si la pregunta es "Cambia de pregunta" ('maybe'), no se cuenta y se libera del historial
     if (answer.type === 'yes' || answer.type === 'no') {
       questionCount++;
       statQuestions.textContent = `${questionCount} / ${MAX_QUESTIONS}`;
       sendToTV('update-questions-count', { count: questionCount });
+    } else if (answer.type === 'maybe') {
+      const idx = askedQuestions.indexOf(normQuestion);
+      if (idx !== -1) askedQuestions.splice(idx, 1);
     }
     
     // Verificar si alcanzó el límite de preguntas
@@ -1139,7 +1142,7 @@ function evaluateQuestionSemantics(question) {
   
   // Si no matchea nada
   return {
-    text: "NO TENGO SUFICIENTE INFORMACIÓN sobre esa pregunta específica. Intenta preguntar sobre su profesión, si está vivo, su origen, o si es real/ficticio.",
+    text: "Cambia de pregunta",
     type: 'maybe'
   };
 }
@@ -1308,16 +1311,40 @@ function checkGuessMatch(userGuess, activeChar) {
 // ==========================================================================
 // 7. ARRIESGAR / GANAR / PERDER
 // ==========================================================================
-document.getElementById('btn-guess-prompt').addEventListener('click', () => {
-  const guess = prompt("¿Quién crees que es el personaje secreto?");
-  if (guess === null) return; // Cancelado
+// MODAL DE ARRIESGAR ANFITRIÓN
+const hostGuessModal = document.getElementById('host-guess-modal');
+const btnCloseHostGuess = document.getElementById('btn-close-host-guess');
+const btnCancelHostGuess = document.getElementById('btn-cancel-host-guess');
+const btnSubmitHostGuess = document.getElementById('btn-submit-host-guess');
+const hostGuessInput = document.getElementById('host-guess-input');
+
+function openHostGuessModal() {
+  if (hostGuessModal) {
+    if (hostGuessInput) hostGuessInput.value = '';
+    hostGuessModal.style.display = 'flex';
+  }
+}
+
+function closeHostGuessModal() {
+  if (hostGuessModal) hostGuessModal.style.display = 'none';
+}
+
+if (btnCloseHostGuess) btnCloseHostGuess.addEventListener('click', closeHostGuessModal);
+if (btnCancelHostGuess) btnCancelHostGuess.addEventListener('click', closeHostGuessModal);
+
+function submitHostGuess() {
+  if (!hostGuessInput) return;
+  const guess = hostGuessInput.value.trim();
+  if (!guess) return;
+
+  closeHostGuessModal();
   
   const isCorrect = checkGuessMatch(guess, activeCharacter);
   
   if (isCorrect) {
-    endGame(true);
+    endGame(true, 'Anfitrión');
   } else {
-    alert(`¡Incorrecto! "${guess}" no es el personaje secreto. La partida continúa y se suma una pregunta.`);
+    showToast(`❌ ¡Incorrecto! "${guess}" no es el personaje secreto.`);
     questionCount++;
     statQuestions.textContent = `${questionCount} / ${MAX_QUESTIONS}`;
     sendToTV('update-questions-count', { count: questionCount });
@@ -1327,7 +1354,16 @@ document.getElementById('btn-guess-prompt').addEventListener('click', () => {
     
     checkGameOver();
   }
-});
+}
+
+if (btnSubmitHostGuess) btnSubmitHostGuess.addEventListener('click', submitHostGuess);
+if (hostGuessInput) {
+  hostGuessInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') submitHostGuess();
+  });
+}
+
+document.getElementById('btn-guess-prompt').addEventListener('click', openHostGuessModal);
 
 document.getElementById('btn-give-up').addEventListener('click', () => {
   if (confirm("¿Estás seguro de que quieres rendirte y revelar el personaje?")) {
@@ -1337,12 +1373,12 @@ document.getElementById('btn-give-up').addEventListener('click', () => {
 
 function checkGameOver() {
   if (questionCount >= MAX_QUESTIONS) {
-    alert("Se han agotado las 20 preguntas disponibles.");
+    showToast("Se han agotado las 20 preguntas disponibles.");
     endGame(false);
   }
 }
 
-function endGame(victory) {
+function endGame(victory, winner = 'Un participante') {
   // Configurar pantalla de resultados
   const resultEmoji = document.getElementById('result-emoji');
   const resultTitle = document.getElementById('result-title');
@@ -1353,7 +1389,7 @@ function endGame(victory) {
   if (victory) {
     resultEmoji.textContent = "🏆";
     resultTitle.textContent = "¡Victoria!";
-    resultSubtitle.textContent = "Han adivinado el personaje secreto con éxito.";
+    resultSubtitle.textContent = `🎉 ¡${winner} ha adivinado el personaje secreto con éxito!`;
   } else {
     resultEmoji.textContent = "💀";
     resultTitle.textContent = "Fin de la Partida";
@@ -1365,11 +1401,12 @@ function endGame(victory) {
   
   changeScreen('results');
   
-  // Enviar comando a la TV
+  // Enviar comando a la TV y a todos los invitados remotos
   sendToTV('reveal-character', {
     victory,
     name: activeCharacter.name,
-    description: activeCharacter.description
+    description: activeCharacter.description,
+    winner: winner
   });
 }
 
@@ -1418,7 +1455,7 @@ if (roomCodeDisplay) {
 btnSyncTv.addEventListener('click', () => {
   syncWithTV();
   sendMusicStateToTV();
-  sendChatControlStateToTV();
+  sendChatControlState();
   showToast('¡Pantalla sincronizada con la TV!');
 });
 

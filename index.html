@@ -450,8 +450,28 @@
     </div>
   </div>
 
+  <!-- MODAL DE ARRIESGAR PARA EL ANFITRÓN -->
+  <div id="host-guess-modal" class="modal-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(6px); z-index: 9999; align-items: center; justify-content: center;">
+    <div class="glass-card" style="max-width: 420px; width: 90%; padding: 25px; border-radius: 16px; border: 1px solid rgba(239, 68, 68, 0.4); box-shadow: 0 10px 30px rgba(239, 68, 68, 0.3); background: #12131c;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h3 style="margin: 0; color: #ef4444; font-size: 1.3rem; font-family: var(--font-title); display: flex; align-items: center; gap: 8px;">
+          <i class="fa-solid fa-bullseye"></i> Arriesgar Personaje
+        </h3>
+        <button id="btn-close-host-guess" style="background: none; border: none; color: var(--text-muted); font-size: 1.4rem; cursor: pointer;">&times;</button>
+      </div>
+      <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 15px;">
+        Escribe el nombre del personaje. Si aciertas, ¡ganan la partida!
+      </p>
+      <input type="text" id="host-guess-input" class="input-field" placeholder="Ej: Lionel Messi, Mario..." style="width: 100%; font-size: 1rem; padding: 12px; border-radius: 8px; margin-bottom: 15px; background: rgba(0,0,0,0.3); border: 1px solid var(--bg-card-border); color: white; outline: none;">
+      <div style="display: flex; gap: 10px; justify-content: flex-end;">
+        <button id="btn-cancel-host-guess" class="btn" style="background: rgba(255,255,255,0.1); color: var(--text-muted); border: none; padding: 10px 18px; border-radius: 8px; cursor: pointer;">Cancelar</button>
+        <button id="btn-submit-host-guess" class="btn" style="background: linear-gradient(135deg, #ef4444, #f97316); color: white; border: none; padding: 10px 20px; font-weight: bold; border-radius: 8px; cursor: pointer;">Arriesgar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Carga de Base de Datos y Lógica principal -->
-  <script src="database.js?v=34"></script>
-  <script src="app.js?v=34"></script>
+  <script src="database.js?v=37"></script>
+  <script src="app.js?v=37"></script>
 </body>
 </html>

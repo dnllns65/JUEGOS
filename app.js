@@ -80,8 +80,38 @@ if (navigator.presentation) {
   btnCast.style.display = 'flex'; // Siempre visible para móvil
 }
 
-// Conectar / Desconectar Proyección (Con selección fresca de dispositivo)
+// MODAL DE OPCIONES DE TRANSMISIÓN (CAST & MULTI-EQUIPO)
+const castOptionsModal = document.getElementById('cast-options-modal');
+const btnCloseCastModal = document.getElementById('btn-close-cast-modal');
+const btnCancelCastModal = document.getElementById('btn-cancel-cast-modal');
+const btnCastChromecast = document.getElementById('btn-cast-chromecast');
+const btnCastQr = document.getElementById('btn-cast-qr');
+const castQrContainer = document.getElementById('cast-qr-container');
+const castTvUrlDisplay = document.getElementById('cast-tv-url-display');
+const btnCopyTvUrl = document.getElementById('btn-copy-tv-url');
+const btnOpenTvTab = document.getElementById('btn-open-tv-tab');
+
+function closeCastModal() {
+  if (castOptionsModal) castOptionsModal.style.display = 'none';
+}
+
+if (btnCloseCastModal) btnCloseCastModal.addEventListener('click', closeCastModal);
+if (btnCancelCastModal) btnCancelCastModal.addEventListener('click', closeCastModal);
+
+// Abrir Modal de Transmisión al hacer clic en el botón de Cast
 btnCast.addEventListener('click', () => {
+  if (castOptionsModal) {
+    if (castTvUrlDisplay) castTvUrlDisplay.textContent = getSpectatorURL();
+    if (castQrContainer) castQrContainer.style.display = 'none';
+    castOptionsModal.style.display = 'flex';
+  } else {
+    triggerChromecastSearch();
+  }
+});
+
+function triggerChromecastSearch() {
+  closeCastModal();
+  
   if (presentationConnection) {
     try {
       presentationConnection.terminate();
@@ -98,6 +128,7 @@ btnCast.addEventListener('click', () => {
         })
         .catch(err => {
           console.log('Transmisión cancelada o fallo al conectar:', err);
+          showToast('Selección cancelada o sin dispositivos nativos.');
         });
     } catch (err) {
       console.warn('Presentation API error:', err);
@@ -106,7 +137,34 @@ btnCast.addEventListener('click', () => {
   } else {
     window.open(getSpectatorURL(), '_blank');
   }
-});
+}
+
+if (btnCastChromecast) {
+  btnCastChromecast.addEventListener('click', triggerChromecastSearch);
+}
+
+if (btnCastQr) {
+  btnCastQr.addEventListener('click', () => {
+    if (castQrContainer) {
+      const isVisible = castQrContainer.style.display === 'block';
+      castQrContainer.style.display = isVisible ? 'none' : 'block';
+    }
+  });
+}
+
+if (btnCopyTvUrl) {
+  btnCopyTvUrl.addEventListener('click', () => {
+    copyToClipboard(getSpectatorURL());
+    closeCastModal();
+  });
+}
+
+if (btnOpenTvTab) {
+  btnOpenTvTab.addEventListener('click', () => {
+    window.open(getSpectatorURL(), '_blank');
+    closeCastModal();
+  });
+}
 
 function setupPresentationConnection(connection) {
   presentationConnection = connection;

@@ -127,12 +127,11 @@ function triggerChromecastSearch() {
           setupPresentationConnection(connection);
         })
         .catch(err => {
-          console.log('Diálogo nativo de Cast cancelado o cerrado:', err);
-          showToast('Selección de Cast cancelada.');
+          console.log('Diálogo nativo de Cast cerrado:', err);
+          // Sin cartel de cancelación
         });
     } catch (err) {
       console.warn('Presentation API error:', err);
-      showToast('Tu navegador no admite selección nativa de Cast.');
     }
   } else {
     window.open(getSpectatorURL(), '_blank');

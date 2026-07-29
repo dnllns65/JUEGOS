@@ -470,8 +470,51 @@
     </div>
   </div>
 
+  <!-- MODAL DE SOLICITUD DE INGRESO (APROBACIÓN POR ANFITRIÓN) -->
+  <div id="guest-approval-modal" class="modal-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(6px); z-index: 9999; align-items: center; justify-content: center;">
+    <div class="glass-card" style="max-width: 420px; width: 90%; padding: 25px; border-radius: 16px; border: 1px solid var(--accent); background: #12131c; box-shadow: 0 10px 30px rgba(139, 92, 246, 0.4); text-align: center;">
+      <div style="font-size: 2.5rem; color: var(--accent); margin-bottom: 10px;">
+        <i class="fa-solid fa-user-plus"></i>
+      </div>
+      <h3 style="margin: 0 0 10px 0; color: white; font-size: 1.25rem; font-family: var(--font-title);">
+        Solicitud de Ingreso
+      </h3>
+      <p style="font-size: 0.95rem; color: var(--text-muted); margin-bottom: 20px; line-height: 1.4;">
+        <strong id="approval-applicant-name" style="color: var(--accent); font-size: 1.1rem;">Invitado</strong> solicita unirse a tu partida de la sala <strong id="approval-room-code" style="color: white;">1234</strong>.
+      </p>
+      <div style="display: flex; gap: 12px; justify-content: center;">
+        <button id="btn-reject-applicant" class="btn" style="flex: 1; padding: 12px; background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #ef4444; font-weight: bold; border-radius: 8px; cursor: pointer;">
+          <i class="fa-solid fa-xmark"></i> Rechazar
+        </button>
+        <button id="btn-approve-applicant" class="btn" style="flex: 1; padding: 12px; background: linear-gradient(135deg, #10b981, #059669); border: none; color: white; font-weight: bold; border-radius: 8px; cursor: pointer;">
+          <i class="fa-solid fa-check"></i> Aceptar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DE CO-ANFITRIÓN (UNIRSE A OTRA SALA EXISTENTE) -->
+  <div id="cohost-join-modal" class="modal-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(6px); z-index: 9999; align-items: center; justify-content: center;">
+    <div class="glass-card" style="max-width: 420px; width: 90%; padding: 25px; border-radius: 16px; border: 1px solid var(--accent); background: #12131c;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h3 style="margin: 0; color: var(--accent); font-size: 1.2rem; font-family: var(--font-title); display: flex; align-items: center; gap: 8px;">
+          <i class="fa-solid fa-right-to-bracket"></i> Unirse a Sala Existente
+        </h3>
+        <button id="btn-close-cohost-modal" style="background: none; border: none; color: var(--text-muted); font-size: 1.4rem; cursor: pointer;">&times;</button>
+      </div>
+      <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 15px;">
+        Ingresa el Código de Sala (4 dígitos) para unirte como Co-Anfitrión:
+      </p>
+      <input type="text" id="cohost-room-input" class="input-field" maxlength="4" placeholder="Ej: 4920" style="width: 100%; font-size: 1.3rem; text-align: center; letter-spacing: 3px; padding: 12px; border-radius: 8px; margin-bottom: 15px; background: rgba(0,0,0,0.3); border: 1px solid var(--bg-card-border); color: white; outline: none;">
+      <div style="display: flex; gap: 10px; justify-content: flex-end;">
+        <button id="btn-cancel-cohost-modal" class="btn" style="background: rgba(255,255,255,0.1); color: var(--text-muted); border: none; padding: 10px 18px; border-radius: 8px; cursor: pointer;">Cancelar</button>
+        <button id="btn-submit-cohost-join" class="btn" style="background: linear-gradient(135deg, var(--primary), var(--accent)); color: white; border: none; padding: 10px 20px; font-weight: bold; border-radius: 8px; cursor: pointer;">Solicitar Ingreso</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Carga de Base de Datos y Lógica principal -->
-  <script src="database.js?v=37"></script>
-  <script src="app.js?v=37"></script>
+  <script src="database.js?v=38"></script>
+  <script src="app.js?v=38"></script>
 </body>
 </html>

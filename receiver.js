@@ -1,5 +1,11 @@
 // Lógica principal - Pantalla Espectador (TV)
-const myClientId = 'guest_' + Math.random().toString(36).substring(2, 9);
+let savedClientId = localStorage.getItem('adivinador_guest_client_id');
+if (!savedClientId) {
+  savedClientId = 'guest_' + Math.random().toString(36).substring(2, 9);
+  localStorage.setItem('adivinador_guest_client_id', savedClientId);
+}
+const myClientId = savedClientId;
+let guestPlayerName = localStorage.getItem('adivinador_guest_name') || 'Invitado';
 let currentRoomCode = '';
 let activeChatTab = 'questions'; // 'questions' o 'social'
 let isGlobalQuestionsEnabled = true;
@@ -10,6 +16,7 @@ let isMusicLocallyMuted = localStorage.getItem('adivinador_guest_music_muted') =
 
 const views = {
   welcome: document.getElementById('tv-view-welcome'),
+  'waiting-approval': document.getElementById('tv-view-waiting-approval'),
   searching: document.getElementById('tv-view-searching'),
   gameplay: document.getElementById('tv-view-gameplay'),
   results: document.getElementById('tv-view-results')
@@ -142,11 +149,37 @@ if (navigator.presentation && navigator.presentation.receiver) {
 // Procesar acciones y actualizar la interfaz de la TV
 function handleTVMessage(action, data) {
   switch (action) {
-    case 'bulk-sync':
-      if (data.actions && Array.isArray(data.actions)) {
-        data.actions.forEach(item => {
-          handleTVMessage(item.action, item.data);
-        });
+    case 'join-approved':
+      if (data.clientId && data.clientId !== myClientId) break;
+      localStorage.setItem('adivinador_guest_room', data.roomCode);
+      const tvChatInputContainer = document.getElementById('tv-chat-input-container');
+      if (tvChatInputContainer) tvChatInputContainer.style.display = 'flex';
+      
+      const tvWelcomeSetupBox = document.getElementById('tv-welcome-setup-box');
+      const tvWelcomeStatusBox = document.getElementById('tv-welcome-status-box');
+      const tvRoomConnectionStatus = document.getElementById('tv-room-connection-status');
+      
+      if (tvWelcomeSetupBox) tvWelcomeSetupBox.style.display = 'none';
+      if (tvWelcomeStatusBox) tvWelcomeStatusBox.style.display = 'block';
+      if (tvRoomConnectionStatus) tvRoomConnectionStatus.textContent = `🟢 Conectado a la Sala ${data.roomCode}`;
+      
+      showView('gameplay');
+      if (data.history && Array.isArray(data.history)) {
+        syncTVChat(data.history);
+      }
+      break;
+
+    case 'join-rejected':
+      if (data.clientId && data.clientId !== myClientId) break;
+      alert(`❌ ${data.reason || 'El Anfitrión no aprobó tu solicitud de ingreso.'}`);
+      showView('welcome');
+      break;
+
+    case 'kick-player':
+      if (data.clientId === myClientId) {
+        localStorage.removeItem('adivinador_guest_room');
+        alert("❌ Has sido expulsado de la sala por el Anfitrión.");
+        window.location.reload();
       }
       break;
 
@@ -369,9 +402,9 @@ function connectToRoom(salaCode, nickname = '') {
   sseSource.onopen = () => {
     console.log(`Conexión SSE establecida con la sala ${salaCode}`);
     
-    // Notificar al anfitrión que nos unimos con nuestro nombre
+    // Notificar al anfitrión nuestra solicitud de ingreso o reconexión (F5)
     setTimeout(() => {
-      sendRoomMessage('guest-joined', { name: resolvedName, clientId: myClientId });
+      sendRoomMessage('join-request', { name: resolvedName, clientId: myClientId });
     }, 500);
   };
 
@@ -829,3 +862,10 @@ function closeTVInstructions() {
 
 if (tvBtnCloseInstructions) tvBtnCloseInstructions.addEventListener('click', closeTVInstructions);
 if (tvBtnUnderstandInstructions) tvBtnUnderstandInstructions.addEventListener('click', closeTVInstructions);
+
+const btnCancelWaitingApproval = document.getElementById('btn-cancel-waiting-approval');
+if (btnCancelWaitingApproval) {
+  btnCancelWaitingApproval.addEventListener('click', () => {
+    showView('welcome');
+  });
+}

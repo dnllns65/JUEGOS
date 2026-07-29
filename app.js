@@ -1564,26 +1564,24 @@ function listenToRoom() {
           }
           addLocalChatMessage('Sistema', `💡 PISTA para ${sender} (${questionsLeft}/20 Qs): ${clueText}`, 'maybe', 'questions');
           sendToTV('clue-revealed', { sender, questionsLeft, clueText });
-        } else if (innerMsg.action === 'guest-joined') {
-          // Registrar nuevo jugador en la sala
-          const { clientId, name } = innerMsg.data;
-          
-          // Si no existía, agregarlo
-          if (!connectedPlayers[clientId]) {
-            const shouldBeQuestionsEnabled = !turnModeEnabled;
-            connectedPlayers[clientId] = { 
-              name: name || `Invitado #${clientId.slice(-4)}`, 
-              questionsEnabled: shouldBeQuestionsEnabled,
-              socialEnabled: true
-            };
+        } else if (innerMsg.action === 'join-request') {
+          processJoinRequest(innerMsg.data);
+        } else if (innerMsg.action === 'request-state-sync') {
+          const { clientId } = innerMsg.data;
+          if (connectedPlayers[clientId]) {
+            sendToTV('join-approved', {
+              clientId: clientId,
+              roomCode: roomCode,
+              isReload: true,
+              history: chatHistory,
+              questionCount: questionCount,
+              maxQuestions: MAX_QUESTIONS,
+              gameMode: gameMode,
+              activeCharacter: activeCharacter ? { name: activeCharacter.name } : null
+            });
           }
-          
-          // Actualizar UI
-          renderPlayerList();
-          
-          // Notificar al invitado nuevo del estado de chat y música
-          sendChatControlState();
-          sendMusicStateToTV();
+        } else if (innerMsg.action === 'guest-joined') {
+          processJoinRequest(innerMsg.data);
         }
       }
     } catch (e) {
@@ -1887,12 +1885,135 @@ function renderPlayerList() {
       sendChatControlState();
     });
     
+    // 3. Botón Expulsar (Solo X roja sin texto)
+    const kickBtn = document.createElement('button');
+    kickBtn.className = 'btn';
+    kickBtn.style.padding = '4px 8px';
+    kickBtn.style.margin = '0';
+    kickBtn.style.fontSize = '0.9rem';
+    kickBtn.style.borderRadius = '4px';
+    kickBtn.style.background = 'rgba(239, 68, 68, 0.15)';
+    kickBtn.style.color = '#ef4444';
+    kickBtn.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+    kickBtn.style.cursor = 'pointer';
+    kickBtn.title = `Expulsar a ${player.name} de la sala`;
+    kickBtn.innerHTML = `<i class="fa-solid fa-xmark"></i>`;
+    
+    kickBtn.addEventListener('click', () => {
+      kickPlayer(clientId);
+    });
+
     mutesContainer.appendChild(muteQuestionsBtn);
     mutesContainer.appendChild(muteSocialBtn);
+    mutesContainer.appendChild(kickBtn);
     
     playerRow.appendChild(nameSpan);
     playerRow.appendChild(mutesContainer);
     playerListContainer.appendChild(playerRow);
+  });
+}
+
+function kickPlayer(clientId) {
+  const player = connectedPlayers[clientId];
+  const playerName = player ? player.name : 'Jugador';
+  
+  delete connectedPlayers[clientId];
+  renderPlayerList();
+  
+  sendToTV('kick-player', { clientId });
+  showToast(`❌ ${playerName} ha sido expulsado.`);
+}
+
+let pendingApplicant = null;
+
+function processJoinRequest(data) {
+  const { clientId, name, role, isReload } = data;
+
+  // Si el jugador YA estaba registrado previamente en esta sala (ej: recargó la pantalla con F5)
+  if (connectedPlayers[clientId]) {
+    if (name) connectedPlayers[clientId].name = name;
+    renderPlayerList();
+    
+    sendToTV('join-approved', {
+      clientId: clientId,
+      roomCode: roomCode,
+      isReload: true,
+      history: chatHistory,
+      questionCount: questionCount,
+      maxQuestions: MAX_QUESTIONS,
+      gameMode: gameMode,
+      activeCharacter: activeCharacter ? { name: activeCharacter.name } : null
+    });
+    return;
+  }
+
+  // Solicitud nueva: mostrar Modal de Aprobación al Anfitrión
+  pendingApplicant = { clientId, name: name || 'Invitado', role: role || 'guest' };
+
+  const guestApprovalModal = document.getElementById('guest-approval-modal');
+  const approvalApplicantName = document.getElementById('approval-applicant-name');
+  const approvalRoomCode = document.getElementById('approval-room-code');
+
+  if (guestApprovalModal) {
+    if (approvalApplicantName) approvalApplicantName.textContent = pendingApplicant.name + (role === 'cohost' ? ' (Co-Anfitrión)' : '');
+    if (approvalRoomCode) approvalRoomCode.textContent = roomCode;
+    guestApprovalModal.style.display = 'flex';
+  }
+}
+
+// Botón Aceptar en Modal de Aprobación
+const btnApproveApplicant = document.getElementById('btn-approve-applicant');
+if (btnApproveApplicant) {
+  btnApproveApplicant.addEventListener('click', () => {
+    if (!pendingApplicant) return;
+    const { clientId, name, role } = pendingApplicant;
+    
+    connectedPlayers[clientId] = {
+      name: name,
+      role: role,
+      questionsLeft: 20,
+      questionsEnabled: true,
+      socialEnabled: true
+    };
+
+    const guestApprovalModal = document.getElementById('guest-approval-modal');
+    if (guestApprovalModal) guestApprovalModal.style.display = 'none';
+
+    renderPlayerList();
+    showToast(`✅ ${name} fue aceptado en la sala.`);
+
+    sendToTV('join-approved', {
+      clientId: clientId,
+      roomCode: roomCode,
+      history: chatHistory,
+      questionCount: questionCount,
+      maxQuestions: MAX_QUESTIONS,
+      gameMode: gameMode,
+      activeCharacter: activeCharacter ? { name: activeCharacter.name } : null
+    });
+
+    pendingApplicant = null;
+  });
+}
+
+// Botón Rechazar en Modal de Aprobación
+const btnRejectApplicant = document.getElementById('btn-reject-applicant');
+if (btnRejectApplicant) {
+  btnRejectApplicant.addEventListener('click', () => {
+    if (!pendingApplicant) return;
+    const { clientId, name } = pendingApplicant;
+
+    const guestApprovalModal = document.getElementById('guest-approval-modal');
+    if (guestApprovalModal) guestApprovalModal.style.display = 'none';
+
+    showToast(`❌ Solicitud de ${name} rechazada.`);
+
+    sendToTV('join-rejected', {
+      clientId: clientId,
+      reason: 'El Anfitrión no aprobó tu ingreso.'
+    });
+
+    pendingApplicant = null;
   });
 }
 

@@ -110,8 +110,6 @@ btnCast.addEventListener('click', () => {
 });
 
 function triggerChromecastSearch() {
-  closeCastModal();
-  
   if (presentationConnection) {
     try {
       presentationConnection.terminate();
@@ -124,15 +122,24 @@ function triggerChromecastSearch() {
       const freshRequest = new PresentationRequest(['receiver.html']);
       freshRequest.start()
         .then(connection => {
+          closeCastModal();
           setupPresentationConnection(connection);
         })
         .catch(err => {
-          console.log('Transmisión cancelada o fallo al conectar:', err);
-          showToast('Selección cancelada o sin dispositivos nativos.');
+          console.log('Transmisión nativa no disponible:', err);
+          if (castOptionsModal) {
+            if (castTvUrlDisplay) castTvUrlDisplay.textContent = getSpectatorURL();
+            if (castQrContainer) castQrContainer.style.display = 'block';
+            castOptionsModal.style.display = 'flex';
+          }
+          showToast('Sin Chromecast nativo. Usa el código de sala o enlace.');
         });
     } catch (err) {
-      console.warn('Presentation API error:', err);
-      window.open(getSpectatorURL(), '_blank');
+      if (castOptionsModal) {
+        if (castTvUrlDisplay) castTvUrlDisplay.textContent = getSpectatorURL();
+        if (castQrContainer) castQrContainer.style.display = 'block';
+        castOptionsModal.style.display = 'flex';
+      }
     }
   } else {
     window.open(getSpectatorURL(), '_blank');
@@ -913,11 +920,18 @@ function evaluateQuestionSemantics(question) {
     return isUS ? { text: "SÍ", type: 'yes' } : { text: "NO", type: 'no' };
   }
 
-  // 6. ¿Se le conoce principalmente por entretenimiento, arte o deporte?
-  if (containsKeyword(question, "entretenimiento") || containsKeyword(question, "arte") || containsKeyword(question, "deporte") || containsKeyword(question, "espectaculo") || containsKeyword(question, "deportista") || containsKeyword(question, "artista")) {
+  // 6a. ¿Es deportista / atleta / se dedica al deporte?
+  if (containsKeyword(question, "deportista") || containsKeyword(question, "atleta") || containsKeyword(question, "futbolista") || containsKeyword(question, "baloncesto") || containsKeyword(question, "tenista") || containsKeyword(question, "deporte")) {
     const area = activeCharacter.filters ? activeCharacter.filters.area : '';
-    const isEntertainmentOrSports = area === 'sports' || area === 'music' || area === 'fiction' || attrs.deportista || attrs.artista || attrs.actor || attrs.actriz || attrs.cantante || attrs.musico || attrs.entretenimiento;
-    return isEntertainmentOrSports ? { text: "SÍ", type: 'yes' } : { text: "NO", type: 'no' };
+    const isSports = area === 'sports' || attrs.deportista === true || attrs.futbolista === true || attrs.atleta === true;
+    return isSports ? { text: "SÍ", type: 'yes' } : { text: "NO", type: 'no' };
+  }
+
+  // 6b. ¿Se le conoce principalmente por entretenimiento, arte o espectáculo?
+  if (containsKeyword(question, "entretenimiento") || containsKeyword(question, "arte") || containsKeyword(question, "espectaculo") || containsKeyword(question, "artista") || containsKeyword(question, "actor") || containsKeyword(question, "actriz")) {
+    const area = activeCharacter.filters ? activeCharacter.filters.area : '';
+    const isEntertainment = area === 'music' || area === 'fiction' || attrs.artista || attrs.actor || attrs.actriz || attrs.cantante || attrs.musico || attrs.entretenimiento || attrs.caricaturista;
+    return isEntertainment ? { text: "SÍ", type: 'yes' } : { text: "NO", type: 'no' };
   }
 
   // 7. ¿Es el/la protagonista de su obra o historia?

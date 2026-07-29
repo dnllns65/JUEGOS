@@ -1,0 +1,17 @@
+{
+  "name": "AdivinaQuién AI - Invitado",
+  "short_name": "AdivinaQuién TV",
+  "description": "Pantalla de Invitado y TV para AdivinaQuién AI",
+  "start_url": "receiver.html",
+  "display": "standalone",
+  "background_color": "#12131c",
+  "theme_color": "#f97316",
+  "icons": [
+    {
+      "src": "icon_guest.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

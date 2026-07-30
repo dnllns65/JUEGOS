@@ -31,7 +31,7 @@
     
     <header style="flex-wrap: wrap; gap: 10px;">
       <div class="logo">
-        <i class="fa-solid fa-crown"></i> AdivinaQuién <span>AI</span> <span style="font-size: 0.7rem; color: var(--accent); background: rgba(139, 92, 246, 0.2); border: 1px solid rgba(139, 92, 246, 0.4); padding: 2px 7px; border-radius: 10px; font-weight: bold; margin-left: 5px;">v49</span>
+        <i class="fa-solid fa-crown"></i> AdivinaQuién <span>AI</span> <span style="font-size: 0.7rem; color: var(--accent); background: rgba(139, 92, 246, 0.2); border: 1px solid rgba(139, 92, 246, 0.4); padding: 2px 7px; border-radius: 10px; font-weight: bold; margin-left: 5px;">v50</span>
       </div>
       <div style="display: flex; gap: 8px;">
         <span id="room-code-display" class="btn-cast" style="background: rgba(139, 92, 246, 0.1); border-color: var(--primary); color: var(--primary); cursor: default; display: none;">
@@ -347,7 +347,7 @@
         </button>
       </div>
     <footer style="text-align: center; padding: 15px 0 5px 0; font-size: 0.8rem; color: var(--text-muted); opacity: 0.75;">
-      AdivinaQuién AI • Modo Anfitrión <span style="color: var(--accent); font-weight: bold;">v49</span>
+      AdivinaQuién AI • Modo Anfitrión <span style="color: var(--accent); font-weight: bold;">v50</span>
     </footer>
 
   </div>
@@ -444,7 +444,10 @@
 
       <!-- Sección Enlace de la TV Expandible -->
       <div id="cast-qr-container" style="display: none; background: rgba(0,0,0,0.4); padding: 15px; border-radius: 12px; text-align: center; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.1);">
-        <span style="font-size: 0.85rem; color: var(--text-muted);">Enlace directo para tu TV o pantalla:</span>
+        <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: bold;">Escanea o abre este enlace en tu Smart TV o PC:</span>
+        <div style="margin: 10px 0; display: flex; justify-content: center;">
+          <img id="cast-qr-img" src="" alt="Código QR TV" style="width: 150px; height: 150px; border-radius: 8px; border: 2px solid var(--accent); background: white; padding: 4px; display: none;">
+        </div>
         <div id="cast-tv-url-display" style="font-family: monospace; font-size: 0.85rem; color: var(--accent); word-break: break-all; margin: 8px 0; padding: 8px; background: rgba(255,255,255,0.05); border-radius: 6px;"></div>
         <div style="display: flex; gap: 8px; justify-content: center; margin-top: 10px;">
           <button id="btn-copy-tv-url" class="btn" style="padding: 6px 12px; font-size: 0.8rem; border-radius: 6px; background: var(--accent); color: white;"><i class="fa-solid fa-copy"></i> Copiar Enlace</button>
@@ -522,7 +525,7 @@
   </div>
 
   <!-- Carga de Base de Datos y Lógica principal -->
-  <script src="database.js?v=49"></script>
-  <script src="app.js?v=49"></script>
+  <script src="database.js?v=50"></script>
+  <script src="app.js?v=50"></script>
 </body>
 </html>

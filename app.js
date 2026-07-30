@@ -148,7 +148,16 @@ if (btnCastQr) {
   btnCastQr.addEventListener('click', () => {
     if (castQrContainer) {
       const isVisible = castQrContainer.style.display === 'block';
-      castQrContainer.style.display = isVisible ? 'none' : 'block';
+      const newDisplay = isVisible ? 'none' : 'block';
+      castQrContainer.style.display = newDisplay;
+      if (newDisplay === 'block') {
+        const tvUrl = getSpectatorURL();
+        const qrImg = document.getElementById('cast-qr-img');
+        if (qrImg) {
+          qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(tvUrl)}`;
+          qrImg.style.display = 'block';
+        }
+      }
     }
   });
 }

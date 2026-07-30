@@ -215,11 +215,11 @@ function sendToTV(action, data = {}) {
   }));
 
   // 3. Enviar por Internet usando ntfy.sh (Modo Remoto)
-  if (roomCode) {
+  if (roomCode && navigator.onLine) {
     fetch(`https://ntfy.sh/adivina_ai_sala_${roomCode}`, {
       method: 'POST',
       body: payloadStr
-    }).catch(err => console.log('Error enviando sincronización remota:', err));
+    }).catch(() => {});
   }
 }
 
@@ -385,6 +385,18 @@ async function searchInternetCharacter(charName) {
     }
   } catch (err) {
     console.error('Error buscando información en Internet (Wikipedia):', err);
+  }
+
+  // Fallback local en CHARACTERS de database.js si no hay red o si falla la API
+  if (typeof CHARACTERS !== 'undefined' && CHARACTERS.length > 0) {
+    const lowerName = charName.toLowerCase();
+    const localMatch = CHARACTERS.find(c =>
+      c.name.toLowerCase().includes(lowerName) ||
+      (c.synonyms && c.synonyms.some(s => s.toLowerCase().includes(lowerName)))
+    );
+    if (localMatch) {
+      return localMatch;
+    }
   }
   return null;
 }
@@ -1545,11 +1557,16 @@ function copyToClipboard(text) {
 // Lógica de Escucha y Chat Bidireccional en el Host
 let hostSse = null;
 function listenToRoom() {
+  if (!navigator.onLine) return;
   if (hostSse) {
-    hostSse.close();
+    try { hostSse.close(); } catch(e) {}
   }
-  hostSse = new EventSource(`https://ntfy.sh/adivina_ai_sala_${roomCode}/sse`);
-  hostSse.onmessage = (event) => {
+  try {
+    hostSse = new EventSource(`https://ntfy.sh/adivina_ai_sala_${roomCode}/sse`);
+    hostSse.onerror = () => {
+      try { if (hostSse) hostSse.close(); } catch(e) {}
+    };
+    hostSse.onmessage = (event) => {
     try {
       const payload = JSON.parse(event.data);
       if (payload.message) {
@@ -1613,6 +1630,7 @@ function listenToRoom() {
       console.error("Error procesando mensaje en host SSE:", e);
     }
   };
+  } catch(e) {}
 }
 
 function addLocalChatMessage(sender, text, type = '', channel = 'questions') {
@@ -2266,4 +2284,18 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
+
+// Detección de Estado Conectado / Modo Avión (Offline)
+function updateOnlineStatusUI() {
+  const offlineBadge = document.getElementById('offline-badge');
+  if (!navigator.onLine) {
+    if (offlineBadge) offlineBadge.style.display = 'inline-flex';
+    showToast('📶 Modo Sin Conexión (Modo Avión). Juego Individual activo.');
+  } else {
+    if (offlineBadge) offlineBadge.style.display = 'none';
+  }
+}
+window.addEventListener('online', updateOnlineStatusUI);
+window.addEventListener('offline', updateOnlineStatusUI);
+window.addEventListener('DOMContentLoaded', updateOnlineStatusUI);
 

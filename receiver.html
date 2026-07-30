@@ -302,7 +302,7 @@
 
     <!-- TV FOOTER -->
     <footer class="tv-footer">
-      Controla este juego desde tu celular o TV • Pantalla de Invitado <span style="color: var(--accent); font-weight: bold;">v50</span>
+      Controla este juego desde tu celular o TV • Pantalla de Invitado <span style="color: var(--accent); font-weight: bold;">v51</span>
     </footer>
 
   </div>
@@ -360,6 +360,13 @@
   </div>
 
   <!-- Lógica de la TV -->
-  <script src="receiver.js?v=50"></script>
+  <script src="receiver.js?v=51"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js?v=51').catch(() => {});
+      });
+    }
+  </script>
 </body>
 </html>

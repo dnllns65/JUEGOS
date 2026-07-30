@@ -279,7 +279,7 @@ function handleTVMessage(action, data) {
       break;
 
     case 'add-chat-bubble':
-      addTVChatBubble(data.sender, data.text, data.type, data.questionCount);
+      addTVChatBubble(data.sender, data.text, data.type, data.questionCount, data.channel || 'questions');
       break;
 
     case 'sync-chat':
@@ -583,12 +583,19 @@ function updateMyQuestionsDisplay() {
 
 const tvChatInput = document.getElementById('tv-chat-input');
 const tvBtnSendChat = document.getElementById('tv-btn-send-chat');
+const tvBtnSendSocial = document.getElementById('tv-btn-send-social');
 
-function sendSpectatorChatMessage() {
+function sendSpectatorChatMessage(forcedChannel) {
   const text = tvChatInput.value.trim();
   if (!text) return;
   
-  if (activeChatTab === 'questions') {
+  const targetChannel = forcedChannel || activeChatTab || 'questions';
+  
+  if (targetChannel === 'questions') {
+    if (isSurrendered) {
+      alert('Te has rendido en esta partida. Permaneces en línea como espectador viendo el juego.');
+      return;
+    }
     if (myQuestionsLeft <= 0) {
       alert('Has agotado tus 20 preguntas disponibles.');
       return;
@@ -598,19 +605,24 @@ function sendSpectatorChatMessage() {
   }
   
   const senderName = (typeof guestPlayerName !== 'undefined' && guestPlayerName) ? guestPlayerName : 'Invitado';
-  const formattedSender = activeChatTab === 'questions' ? `${senderName} (${myQuestionsLeft}/20 Qs)` : senderName;
+  const formattedSender = targetChannel === 'questions' ? `${senderName} (${myQuestionsLeft}/20 Qs)` : senderName;
   
   // Mostrar localmente
-  addSpectatorChatMessage(senderName, text, 'chat', activeChatTab);
+  addSpectatorChatMessage(senderName, text, 'chat', targetChannel);
   
   // Enviar a la sala por ntfy.sh
-  sendRoomMessage('chat-message', { sender: formattedSender, text: text, type: 'chat', channel: activeChatTab, questionsLeft: myQuestionsLeft });
+  sendRoomMessage('chat-message', { sender: formattedSender, text: text, type: 'chat', channel: targetChannel, questionsLeft: myQuestionsLeft });
   
   tvChatInput.value = '';
 }
 
-if (tvBtnSendChat && tvChatInput) {
-  tvBtnSendChat.addEventListener('click', sendSpectatorChatMessage);
+if (tvBtnSendChat) {
+  tvBtnSendChat.addEventListener('click', () => sendSpectatorChatMessage('questions'));
+}
+if (tvBtnSendSocial) {
+  tvBtnSendSocial.addEventListener('click', () => sendSpectatorChatMessage('social'));
+}
+if (tvChatInput) {
   tvChatInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') {
       sendSpectatorChatMessage();
@@ -636,12 +648,43 @@ if (tvBtnClue) {
   });
 }
 
+let isSurrendered = false;
+const tvBtnSurrender = document.getElementById('tv-btn-surrender');
+if (tvBtnSurrender) {
+  tvBtnSurrender.addEventListener('click', () => {
+    if (isSurrendered) {
+      alert('Ya te has rendido en esta partida. Sigues conectado como espectador.');
+      return;
+    }
+    
+    if (confirm('¿Estás seguro de que deseas rendirte? Permanecerás en línea viendo la partida en vivo hasta que todos terminen.')) {
+      isSurrendered = true;
+      myQuestionsLeft = 0;
+      updateMyQuestionsDisplay();
+      
+      const tvMyQuestionsBadge = document.getElementById('tv-my-questions-badge');
+      if (tvMyQuestionsBadge) {
+        tvMyQuestionsBadge.innerHTML = `<span style="color: #ef4444;"><i class="fa-solid fa-flag"></i> Te has rendido (Espectador)</span>`;
+      }
+
+      const senderName = (typeof guestPlayerName !== 'undefined' && guestPlayerName) ? guestPlayerName : 'Invitado';
+      addSpectatorChatMessage('Sistema', `🏳️ ${senderName} se ha rendido. Permanece en la sala como espectador.`, 'error', 'questions');
+      sendRoomMessage('chat-message', {
+        sender: 'Sistema',
+        text: `🏳️ ${senderName} se ha rendido. Permanece en la sala como espectador.`,
+        type: 'error',
+        channel: 'questions'
+      });
+    }
+  });
+}
+
 // Configurar Tabs de Chat en Espectador
 if (tvTabQuestions && tvTabSocial) {
   tvTabQuestions.addEventListener('click', () => {
     activeChatTab = 'questions';
-    if (tvChatQuestionsContainer) tvChatQuestionsContainer.style.display = 'flex';
-    if (tvChatSocialContainer) tvChatSocialContainer.style.display = 'none';
+    if (tvChatQuestionsContainer) tvChatQuestionsContainer.style.setProperty('display', 'flex', 'important');
+    if (tvChatSocialContainer) tvChatSocialContainer.style.setProperty('display', 'none', 'important');
     
     // Estilo activo
     tvTabQuestions.style.background = 'var(--accent)';
@@ -661,8 +704,8 @@ if (tvTabQuestions && tvTabSocial) {
   
   tvTabSocial.addEventListener('click', () => {
     activeChatTab = 'social';
-    if (tvChatSocialContainer) tvChatSocialContainer.style.display = 'flex';
-    if (tvChatQuestionsContainer) tvChatQuestionsContainer.style.display = 'none';
+    if (tvChatSocialContainer) tvChatSocialContainer.style.setProperty('display', 'flex', 'important');
+    if (tvChatQuestionsContainer) tvChatQuestionsContainer.style.setProperty('display', 'none', 'important');
     
     // Estilo activo
     tvTabSocial.style.background = 'var(--accent)';

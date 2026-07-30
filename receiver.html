@@ -113,7 +113,7 @@
     <!-- TV HEADER -->
     <header class="tv-header">
       <div class="logo tv-logo">
-        <i class="fa-solid fa-brain"></i> AdivinaQuién <span>AI</span> <span style="font-size: 0.75rem; color: var(--accent); background: rgba(249, 115, 22, 0.2); border: 1px solid rgba(249, 115, 22, 0.4); padding: 2px 8px; border-radius: 10px; font-weight: bold; margin-left: 6px;">v42</span>
+        <i class="fa-solid fa-brain"></i> AdivinaQuién <span>AI</span> <span style="font-size: 0.75rem; color: var(--accent); background: rgba(249, 115, 22, 0.2); border: 1px solid rgba(249, 115, 22, 0.4); padding: 2px 8px; border-radius: 10px; font-weight: bold; margin-left: 6px;">v49</span>
       </div>
       <div style="display: flex; gap: 10px; align-items: center;">
         <button id="tv-btn-open-instructions" class="tv-status-badge" style="background: rgba(139, 92, 246, 0.15); border-color: var(--accent); color: white; padding: 6px 14px; display: inline-flex; align-items: center; justify-content: center; border-radius: 20px; cursor: pointer; gap: 6px; font-weight: bold;" title="Ver Instructivo de Juego">
@@ -251,16 +251,24 @@
               <span><i class="fa-solid fa-circle-question"></i> Preguntas disponibles:</span>
               <span style="font-size: 0.95rem; color: white;"><span id="tv-my-qs-val">20</span> / 20</span>
             </div>
-            <div style="display: flex; gap: 8px; width: 100%;">
-              <input type="text" id="tv-chat-input" class="input-field" placeholder="Escribe tu pregunta..." style="font-size: 0.95rem; padding: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--bg-card-border); color: var(--text-main); border-radius: 8px; flex-grow: 1; outline: none;">
-              <button id="tv-btn-send-chat" class="btn" style="padding: 10px 15px; margin-top: 0; border-radius: 8px;" title="Enviar Pregunta"><i class="fa-solid fa-paper-plane"></i></button>
+            <div style="display: flex; gap: 6px; width: 100%;">
+              <input type="text" id="tv-chat-input" class="input-field" placeholder="Escribe tu mensaje..." style="font-size: 0.95rem; padding: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--bg-card-border); color: var(--text-main); border-radius: 8px; flex-grow: 1; outline: none;">
+              <button id="tv-btn-send-social" class="btn" style="padding: 10px 14px; margin-top: 0; border-radius: 8px; background: rgba(139, 92, 246, 0.15); color: var(--accent); border: 1px solid var(--accent);" title="Enviar mensaje al chat Social">
+                <i class="fa-solid fa-comments"></i>
+              </button>
+              <button id="tv-btn-send-chat" class="btn" style="padding: 10px 14px; margin-top: 0; border-radius: 8px;" title="Enviar Pregunta de Juego">
+                <i class="fa-solid fa-paper-plane"></i>
+              </button>
             </div>
-            <div style="display: flex; gap: 8px; width: 100%; margin-top: 4px;">
-              <button id="tv-btn-guess" class="btn" style="flex: 1; padding: 8px; margin-top: 0; border-radius: 8px; background: linear-gradient(135deg, #ef4444, #f97316); border: none; font-weight: bold; color: white; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 0.85rem;" title="Arriesgar el nombre del personaje">
+            <div style="display: flex; gap: 6px; width: 100%; margin-top: 4px; flex-wrap: wrap;">
+              <button id="tv-btn-guess" class="btn" style="flex: 1; padding: 8px; margin-top: 0; border-radius: 8px; background: linear-gradient(135deg, #ef4444, #f97316); border: none; font-weight: bold; color: white; display: flex; align-items: center; justify-content: center; gap: 4px; font-size: 0.8rem;" title="Arriesgar el nombre del personaje">
                 <i class="fa-solid fa-bullseye"></i> Arriesgar
               </button>
-              <button id="tv-btn-clue" class="btn" style="flex: 1; padding: 8px; margin-top: 0; border-radius: 8px; background: linear-gradient(135deg, #eab308, #ca8a04); border: none; font-weight: bold; color: white; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 0.85rem;" title="Pedir una pista sobre el personaje">
-                <i class="fa-solid fa-lightbulb"></i> Pedir Pista
+              <button id="tv-btn-clue" class="btn" style="flex: 1; padding: 8px; margin-top: 0; border-radius: 8px; background: linear-gradient(135deg, #eab308, #ca8a04); border: none; font-weight: bold; color: white; display: flex; align-items: center; justify-content: center; gap: 4px; font-size: 0.8rem;" title="Pedir una pista sobre el personaje">
+                <i class="fa-solid fa-lightbulb"></i> Pista
+              </button>
+              <button id="tv-btn-surrender" class="btn" style="flex: 1; padding: 8px; margin-top: 0; border-radius: 8px; background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; font-weight: bold; color: #ef4444; display: flex; align-items: center; justify-content: center; gap: 4px; font-size: 0.8rem;" title="Rendirse en esta partida">
+                <i class="fa-solid fa-flag"></i> Rendirse
               </button>
             </div>
           </div>
@@ -294,7 +302,7 @@
 
     <!-- TV FOOTER -->
     <footer class="tv-footer">
-      Controla este juego desde tu celular o TV • Pantalla de Invitado <span style="color: var(--accent); font-weight: bold;">v42</span>
+      Controla este juego desde tu celular o TV • Pantalla de Invitado <span style="color: var(--accent); font-weight: bold;">v49</span>
     </footer>
 
   </div>
@@ -352,6 +360,6 @@
   </div>
 
   <!-- Lógica de la TV -->
-  <script src="receiver.js?v=43"></script>
+  <script src="receiver.js?v=49"></script>
 </body>
 </html>

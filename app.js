@@ -58,8 +58,9 @@ let presentationRequest = null;
 
 
 if (navigator.presentation) {
-  // Configurar el archivo receptor
-  presentationRequest = new PresentationRequest(['receiver.html']);
+  // Configurar el archivo receptor con URL absoluta para Chrome Android Cast
+  const receiverUrl = new URL('receiver.html', window.location.href).href;
+  presentationRequest = new PresentationRequest([receiverUrl]);
   navigator.presentation.defaultRequest = presentationRequest;
   
   // Escuchar si hay pantallas disponibles
@@ -121,7 +122,8 @@ function triggerChromecastSearch() {
 
   if (window.PresentationRequest) {
     try {
-      const freshRequest = new PresentationRequest(['receiver.html']);
+      const receiverUrl = new URL('receiver.html', window.location.href).href;
+      const freshRequest = new PresentationRequest([receiverUrl]);
       freshRequest.start()
         .then(connection => {
           setupPresentationConnection(connection);
@@ -545,8 +547,12 @@ function startGame() {
   if (chatQuestionsContainer) chatQuestionsContainer.innerHTML = '';
   if (chatSocialContainer) chatSocialContainer.innerHTML = '';
   statQuestions.textContent = `0 / ${MAX_QUESTIONS}`;
-  statMode.textContent = gameMode === 'ai' ? 'ANFITRIÓN IA' : 'MANUAL';
-  
+  // Plegar panel de control de sala para dejar pantalla limpia durante el juego
+  const btnToggleRoomControl = document.getElementById('btn-toggle-room-control');
+  const roomControlPanel = document.getElementById('room-control-panel');
+  if (btnToggleRoomControl) btnToggleRoomControl.style.display = 'flex';
+  if (roomControlPanel) roomControlPanel.style.display = 'none';
+
   // Configurar display de identidad
   charNameDisplay.textContent = activeCharacter.name;
   charDescDisplay.textContent = activeCharacter.description;
@@ -554,17 +560,12 @@ function startGame() {
   // Por defecto la respuesta está oculta bajo un blur
   blurOverlay.style.display = 'flex';
   
-  // Ajustar paneles de controles según el modo
+  // Ajustar paneles de controles para Gameplay
   const controlsAI = document.getElementById('controls-ai');
   const controlsManual = document.getElementById('controls-manual');
   
-  if (gameMode === 'ai') {
-    controlsAI.style.display = 'flex';
-    controlsManual.style.display = 'none';
-  } else {
-    controlsAI.style.display = 'none';
-    controlsManual.style.display = 'flex';
-  }
+  if (controlsAI) controlsAI.style.display = 'flex';
+  if (controlsManual) controlsManual.style.display = gameMode === 'manual' ? 'flex' : 'none';
   
   changeScreen('gameplay');
   
@@ -585,11 +586,11 @@ blurOverlay.addEventListener('click', () => {
 });
 
 // Registrar un mensaje en el historial local y sincronizar con la TV
-function addChatMessage(sender, text, type = '') {
-  chatHistory.push({ sender, text, type });
+function addChatMessage(sender, text, type = '', channel = 'questions') {
+  chatHistory.push({ sender, text, type, channel });
   
   // Si es una pregunta oficial del jugador (sender === 'player'), buscar si ya existe en la caja de chat una burbuja del invitado con ese texto para actualizarla sin duplicar
-  if (sender === 'player' && chatQuestionsContainer) {
+  if (sender === 'player' && chatQuestionsContainer && channel === 'questions') {
     const existingBubbles = chatQuestionsContainer.querySelectorAll('.chat-bubble');
     for (let b of existingBubbles) {
       if (b.textContent.includes(text)) {
@@ -599,7 +600,7 @@ function addChatMessage(sender, text, type = '') {
           meta.textContent = `Pregunta #${questionCount}:`;
         }
         chatQuestionsContainer.scrollTop = chatQuestionsContainer.scrollHeight;
-        sendToTV('add-chat-bubble', { sender, text, type, questionCount });
+        sendToTV('add-chat-bubble', { sender, text, type, questionCount, channel });
         return;
       }
     }
@@ -623,13 +624,14 @@ function addChatMessage(sender, text, type = '') {
   bubble.appendChild(meta);
   bubble.appendChild(content);
   
-  if (chatQuestionsContainer) {
-    chatQuestionsContainer.appendChild(bubble);
-    chatQuestionsContainer.scrollTop = chatQuestionsContainer.scrollHeight;
+  const targetContainer = channel === 'social' ? chatSocialContainer : chatQuestionsContainer;
+  if (targetContainer) {
+    targetContainer.appendChild(bubble);
+    targetContainer.scrollTop = targetContainer.scrollHeight;
   }
   
   // Sincronizar chat e historial con la TV
-  sendToTV('add-chat-bubble', { sender, text, type, questionCount });
+  sendToTV('add-chat-bubble', { sender, text, type, questionCount, channel });
 }
 
 
@@ -1162,19 +1164,23 @@ document.querySelectorAll('.btn-manual-answer').forEach(button => {
     const answerType = button.dataset.answer;
     let answerText = "SÍ";
     if (answerType === 'no') answerText = "NO";
-    if (answerType === 'maybe') answerText = "TAL VEZ / PARCIAL";
+    if (answerType === 'maybe') answerText = "Cambia de pregunta";
     
-    // Solo contar la pregunta si la respuesta es concluyente (SÍ o NO)
-    if (answerType === 'yes' || answerType === 'no') {
+    const targetChannel = activeHostChatTab || 'questions';
+    const textToUse = (inputQuestion && inputQuestion.value.trim()) ? inputQuestion.value.trim() : '[Pregunta formulada]';
+    
+    // Solo contar la pregunta si la respuesta es en canal preguntas y concluyente (SÍ o NO)
+    if (targetChannel === 'questions' && (answerType === 'yes' || answerType === 'no')) {
       questionCount++;
       statQuestions.textContent = `${questionCount} / ${MAX_QUESTIONS}`;
       sendToTV('update-questions-count', { count: questionCount });
     }
     
-    addChatMessage('player', `[Pregunta formulada en voz alta]`);
-    addChatMessage('host', answerText, answerType);
+    addChatMessage('player', textToUse, '', targetChannel);
+    addChatMessage('host', answerText, answerType, targetChannel);
     
-    // Verificar si alcanzó el límite
+    if (inputQuestion) inputQuestion.value = '';
+    
     checkGameOver();
   });
 });
@@ -1418,6 +1424,10 @@ function endGame(victory, winner = 'Un participante') {
 
 // Jugar de nuevo
 document.getElementById('btn-play-again').addEventListener('click', () => {
+  const btnToggleRoomControl = document.getElementById('btn-toggle-room-control');
+  const roomControlPanel = document.getElementById('room-control-panel');
+  if (btnToggleRoomControl) btnToggleRoomControl.style.display = 'none';
+  if (roomControlPanel) roomControlPanel.style.display = 'block';
   changeScreen('setup');
 });
 
@@ -1624,16 +1634,23 @@ function addLocalChatMessage(sender, text, type = '', channel = 'questions') {
     bubble.appendChild(meta);
     bubble.appendChild(content);
     
-    // Si es un mensaje de invitado en preguntas, agregar botón rápido de copiar
-    if (sender === 'Invitado' && channel === 'questions') {
+    // Si es un mensaje de invitado en preguntas, agregar botón rápido de responder
+    if (sender !== 'Anfitrión' && sender !== 'Sistema' && channel === 'questions') {
       const copyBtn = document.createElement('button');
       copyBtn.className = 'btn-copy-question';
-      copyBtn.innerHTML = `<i class="fa-solid fa-copy"></i> Usar`;
-      copyBtn.style.cssText = 'background: rgba(139, 92, 246, 0.25); border: 1px solid var(--primary); color: var(--text-main); font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; margin-top: 5px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; width: fit-content; font-family: inherit; font-weight: bold; border-radius: 4px; border: 1px solid var(--primary);';
+      copyBtn.innerHTML = `<i class="fa-solid fa-reply"></i> Responder`;
+      copyBtn.style.cssText = 'background: rgba(139, 92, 246, 0.25); border: 1px solid var(--accent); color: white; font-size: 0.7rem; padding: 3px 8px; border-radius: 6px; margin-top: 5px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; width: fit-content; font-family: inherit; font-weight: bold;';
       copyBtn.addEventListener('click', () => {
-        inputQuestion.value = text;
-        inputQuestion.focus();
-        showToast('Mensaje copiado al cuadro de pregunta');
+        if (hostTabQuestions) hostTabQuestions.click();
+        if (inputQuestion) inputQuestion.value = text;
+        showToast(`Pregunta de ${sender} cargada para responder`);
+        const controlsManual = document.getElementById('controls-manual');
+        const controlsAI = document.getElementById('controls-ai');
+        if (gameMode === 'manual' && controlsManual) {
+          controlsManual.scrollIntoView({ behavior: 'smooth' });
+        } else if (controlsAI) {
+          controlsAI.scrollIntoView({ behavior: 'smooth' });
+        }
       });
       bubble.appendChild(copyBtn);
     }
@@ -1707,8 +1724,15 @@ const hostTabSocial = document.getElementById('host-tab-social');
 if (hostTabQuestions && hostTabSocial) {
   hostTabQuestions.addEventListener('click', () => {
     activeHostChatTab = 'questions';
-    if (chatQuestionsContainer) chatQuestionsContainer.style.display = 'flex';
-    if (chatSocialContainer) chatSocialContainer.style.display = 'none';
+    if (chatQuestionsContainer) chatQuestionsContainer.style.setProperty('display', 'flex', 'important');
+    if (chatSocialContainer) chatSocialContainer.style.setProperty('display', 'none', 'important');
+    if (inputQuestion) inputQuestion.placeholder = "¿Es un deportista? ¿Está vivo?...";
+    
+    const controlsManual = document.getElementById('controls-manual');
+    if (controlsManual) {
+      controlsManual.style.display = gameMode === 'manual' ? 'flex' : 'none';
+    }
+    
     hostTabQuestions.style.background = 'var(--accent)';
     hostTabQuestions.style.color = 'white';
     hostTabQuestions.style.borderColor = 'var(--accent)';
@@ -1720,8 +1744,15 @@ if (hostTabQuestions && hostTabSocial) {
 
   hostTabSocial.addEventListener('click', () => {
     activeHostChatTab = 'social';
-    if (chatSocialContainer) chatSocialContainer.style.display = 'flex';
-    if (chatQuestionsContainer) chatQuestionsContainer.style.display = 'none';
+    if (chatSocialContainer) chatSocialContainer.style.setProperty('display', 'flex', 'important');
+    if (chatQuestionsContainer) chatQuestionsContainer.style.setProperty('display', 'none', 'important');
+    if (inputQuestion) inputQuestion.placeholder = "Escribe un mensaje para el chat Social...";
+    
+    const controlsManual = document.getElementById('controls-manual');
+    if (controlsManual) {
+      controlsManual.style.display = 'none';
+    }
+    
     hostTabSocial.style.background = 'var(--accent)';
     hostTabSocial.style.color = 'white';
     hostTabSocial.style.borderColor = 'var(--accent)';
@@ -1742,8 +1773,8 @@ const lobbyChatSocialContainer = document.getElementById('lobby-chat-social-cont
 if (lobbyTabQuestions && lobbyTabSocial) {
   lobbyTabQuestions.addEventListener('click', () => {
     activeLobbyChatTab = 'questions';
-    if (lobbyChatQuestionsContainer) lobbyChatQuestionsContainer.style.display = 'flex';
-    if (lobbyChatSocialContainer) lobbyChatSocialContainer.style.display = 'none';
+    if (lobbyChatQuestionsContainer) lobbyChatQuestionsContainer.style.setProperty('display', 'flex', 'important');
+    if (lobbyChatSocialContainer) lobbyChatSocialContainer.style.setProperty('display', 'none', 'important');
     lobbyTabQuestions.style.background = 'var(--accent)';
     lobbyTabQuestions.style.color = 'white';
     lobbyTabQuestions.style.borderColor = 'var(--accent)';
@@ -1755,8 +1786,8 @@ if (lobbyTabQuestions && lobbyTabSocial) {
 
   lobbyTabSocial.addEventListener('click', () => {
     activeLobbyChatTab = 'social';
-    if (lobbyChatSocialContainer) lobbyChatSocialContainer.style.display = 'flex';
-    if (lobbyChatQuestionsContainer) lobbyChatQuestionsContainer.style.display = 'none';
+    if (lobbyChatSocialContainer) lobbyChatSocialContainer.style.setProperty('display', 'flex', 'important');
+    if (lobbyChatQuestionsContainer) lobbyChatQuestionsContainer.style.setProperty('display', 'none', 'important');
     lobbyTabSocial.style.background = 'var(--accent)';
     lobbyTabSocial.style.color = 'white';
     lobbyTabSocial.style.borderColor = 'var(--accent)';
@@ -1916,6 +1947,29 @@ function renderPlayerList() {
     playerRow.appendChild(nameSpan);
     playerRow.appendChild(mutesContainer);
     playerListContainer.appendChild(playerRow);
+  });
+
+  const connectedPlayersCount = document.getElementById('connected-players-count');
+  if (connectedPlayersCount) {
+    connectedPlayersCount.textContent = Object.keys(connectedPlayers).length;
+  }
+}
+
+const btnToggleRoomControl = document.getElementById('btn-toggle-room-control');
+const roomControlArrow = document.getElementById('room-control-arrow');
+
+if (btnToggleRoomControl) {
+  btnToggleRoomControl.addEventListener('click', () => {
+    const roomControlPanel = document.getElementById('room-control-panel');
+    if (roomControlPanel) {
+      if (roomControlPanel.style.display === 'none') {
+        roomControlPanel.style.display = 'block';
+        if (roomControlArrow) roomControlArrow.style.transform = 'rotate(180deg)';
+      } else {
+        roomControlPanel.style.display = 'none';
+        if (roomControlArrow) roomControlArrow.style.transform = 'rotate(0deg)';
+      }
+    }
   });
 }
 

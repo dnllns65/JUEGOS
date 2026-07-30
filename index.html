@@ -31,7 +31,7 @@
     
     <header style="flex-wrap: wrap; gap: 10px;">
       <div class="logo">
-        <i class="fa-solid fa-crown"></i> AdivinaQuién <span>AI</span> <span style="font-size: 0.7rem; color: var(--accent); background: rgba(139, 92, 246, 0.2); border: 1px solid rgba(139, 92, 246, 0.4); padding: 2px 7px; border-radius: 10px; font-weight: bold; margin-left: 5px;">v42</span>
+        <i class="fa-solid fa-crown"></i> AdivinaQuién <span>AI</span> <span style="font-size: 0.7rem; color: var(--accent); background: rgba(139, 92, 246, 0.2); border: 1px solid rgba(139, 92, 246, 0.4); padding: 2px 7px; border-radius: 10px; font-weight: bold; margin-left: 5px;">v49</span>
       </div>
       <div style="display: flex; gap: 8px;">
         <span id="room-code-display" class="btn-cast" style="background: rgba(139, 92, 246, 0.1); border-color: var(--primary); color: var(--primary); cursor: default; display: none;">
@@ -49,6 +49,12 @@
         </button>
       </div>
     </header>
+
+    <!-- Botón para Plegar / Desplegar Control de Jugadores en Juego -->
+    <button id="btn-toggle-room-control" class="btn" style="display: none; width: 100%; margin-bottom: 12px; padding: 10px 16px; background: rgba(139, 92, 246, 0.15); border: 1px solid var(--accent); color: white; border-radius: 10px; font-weight: bold; align-items: center; justify-content: space-between; cursor: pointer; text-transform: none; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">
+      <span style="display: inline-flex; align-items: center; gap: 8px;"><i class="fa-solid fa-users" style="color: var(--accent);"></i> Ajustes de Jugadores / Sala (<span id="connected-players-count">0</span>)</span>
+      <i id="room-control-arrow" class="fa-solid fa-chevron-down" style="transition: transform 0.3s ease;"></i>
+    </button>
 
     <!-- Panel de control de chat y jugadores (visible si hay sala activa) -->
     <div id="room-control-panel" class="glass-card" style="display: none; margin-bottom: 20px; padding: 15px; border-color: rgba(139, 92, 246, 0.25);">
@@ -341,7 +347,7 @@
         </button>
       </div>
     <footer style="text-align: center; padding: 15px 0 5px 0; font-size: 0.8rem; color: var(--text-muted); opacity: 0.75;">
-      AdivinaQuién AI • Modo Anfitrión <span style="color: var(--accent); font-weight: bold;">v42</span>
+      AdivinaQuién AI • Modo Anfitrión <span style="color: var(--accent); font-weight: bold;">v49</span>
     </footer>
 
   </div>
@@ -516,7 +522,7 @@
   </div>
 
   <!-- Carga de Base de Datos y Lógica principal -->
-  <script src="database.js?v=43"></script>
-  <script src="app.js?v=43"></script>
+  <script src="database.js?v=49"></script>
+  <script src="app.js?v=49"></script>
 </body>
 </html>

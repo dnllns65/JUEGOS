@@ -502,7 +502,39 @@ document.getElementById('btn-run-search').addEventListener('click', async () => 
   }, 500);
 });
 
+// Obtener historial de personajes jugados hoy desde localStorage
+function getPlayedTodayList() {
+  const todayStr = new Date().toISOString().split('T')[0];
+  try {
+    const raw = localStorage.getItem('adivinador_played_today');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed.date === todayStr && Array.isArray(parsed.names)) {
+        return parsed.names;
+      }
+    }
+  } catch (e) {}
+  return [];
+}
+
+// Guardar personaje jugado hoy en el historial del día
+function savePlayedToday(charName) {
+  const todayStr = new Date().toISOString().split('T')[0];
+  const list = getPlayedTodayList();
+  if (!list.includes(charName)) {
+    list.push(charName);
+  }
+  try {
+    localStorage.setItem('adivinador_played_today', JSON.stringify({
+      date: todayStr,
+      names: list
+    }));
+  } catch (e) {}
+}
+
 function selectCharacter() {
+  const playedToday = getPlayedTodayList();
+
   const candidates = CHARACTERS.filter(char => {
     const isDead = char.deathYear !== null && char.deathYear !== undefined;
     
@@ -524,8 +556,15 @@ function selectCharacter() {
   });
 
   console.log('Candidatos que coinciden exactamente con los filtros:', candidates);
+  console.log('Personajes ya jugados hoy:', playedToday);
 
-  if (candidates.length > 0) {
+  // Filtrar primero los candidatos que NO se han jugado hoy
+  const unplayedCandidates = candidates.filter(c => !playedToday.includes(c.name));
+
+  if (unplayedCandidates.length > 0) {
+    activeCharacter = unplayedCandidates[Math.floor(Math.random() * unplayedCandidates.length)];
+  } else if (candidates.length > 0) {
+    // Si ya se jugaron todos los candidatos de esa categoría hoy, elegir de candidates (reiniciando ciclo para esa categoría)
     activeCharacter = candidates[Math.floor(Math.random() * candidates.length)];
   } else {
     // Fallback inteligente: Respetar estrictamente Región, Época y Exclusión de Muertos en Actualidad
@@ -538,7 +577,11 @@ function selectCharacter() {
       return true;
     });
 
-    if (smartFallback.length > 0) {
+    const unplayedFallback = smartFallback.filter(c => !playedToday.includes(c.name));
+
+    if (unplayedFallback.length > 0) {
+      activeCharacter = unplayedFallback[Math.floor(Math.random() * unplayedFallback.length)];
+    } else if (smartFallback.length > 0) {
       activeCharacter = smartFallback[Math.floor(Math.random() * smartFallback.length)];
     } else {
       // Fallback de seguridad respetando vivo/muerto según la época elegida
@@ -551,6 +594,11 @@ function selectCharacter() {
         ? eraFallback[Math.floor(Math.random() * eraFallback.length)]
         : CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)];
     }
+  }
+
+  // Registrar el personaje en el historial de hoy
+  if (activeCharacter) {
+    savePlayedToday(activeCharacter.name);
   }
 }
 
